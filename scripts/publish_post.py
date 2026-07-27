@@ -43,6 +43,7 @@ MONTHS = {
     "uk": "січня лютого березня квітня травня червня липня серпня вересня жовтня листопада грудня".split(),
     "ar": "يناير فبراير مارس أبريل مايو يونيو يوليو أغسطس سبتمبر أكتوبر نوفمبر ديسمبر".split(),
     "ku": "Rêbendan Reşemî Adar Avrêl Gulan Pûşper Tîrmeh Gelawêj Rezber Kewçêr Sermawez Berfanbar".split(),
+    "fa": "جنوری فبروری مارچ اپریل می جون جولای اگست سپتامبر اکتبر نومبر دسمبر".split(),
 }
 
 LANGS = {
@@ -67,10 +68,13 @@ LANGS = {
     "ku": dict(label="Kurdî", locale="ku_TR", rtl=False, date="{d} {m} {y}",
                read_more="Zêdetir bixwîne", back="Vegere nûçeyan",
                by="Nivîskar", published="Hatiye weşandin", quotes=("“", "”")),
+    "fa": dict(label="فارسی", locale="fa_IR", rtl=True, date="{d} {m} {y}",
+               read_more="ادامه مطلب", back="بازگشت به اخبار",
+               by="نویسنده", published="منتشر شده در", quotes=("«", "»")),
 }
 
 # Order of chips in the overview filter.
-CHIP_ORDER = ["de", "en", "tr", "ru", "uk", "ar", "ku"]
+CHIP_ORDER = ["de", "en", "tr", "ru", "uk", "ar", "ku", "fa"]
 
 
 def die(msg):
@@ -123,7 +127,7 @@ def match_author(name, registry):
 
 
 BYLINE = re.compile(
-    r"^\s*(?:\*{0,3})\s*(?:author|by|autor|autorin|yazar|автор|нивîskar|nivîskar|الكاتب)\s*[::]\s*(.+?)\s*(?:\*{0,3})\s*$",
+    r"^\s*(?:\*{0,3})\s*(?:author|by|autor|autorin|yazar|автор|нивîskar|nivîskar|الكاتب|نویسنده)\s*[::]\s*(.+?)\s*(?:\*{0,3})\s*$",
     re.I | re.M,
 )
 
@@ -191,7 +195,7 @@ def split_attribution(line):
     """'--- Name, role' / '***Name** — role*' -> (name, role)."""
     s = re.sub(r"[*_]", "", line.strip())          # emphasis first…
     s = re.sub(r"^\s*[—–-]{1,3}\s*", "", s).strip()  # …then the leading dash
-    for sep in [",", "—", "–", " - ", "|"]:
+    for sep in [",", "،", "—", "–", " - ", "|"]:
         if sep in s:
             name, role = s.split(sep, 1)
             return name.strip(), role.strip()
@@ -345,7 +349,7 @@ def words(text):
     t = re.sub(r"^\s*[-•+*]\s*", " ", t, flags=re.M)
     t = re.sub(r"\(mailto:[^)]*\)", " ", t)
     t = re.sub(r"\(https?://[^)]*\)", " ", t)
-    t = re.sub(r"[,.;:!?()]", " ", t)
+    t = re.sub(r"[,.;:!?()،؛]", " ", t)
     t = re.sub(r"\s—\s", " ", t)          # attribution dash is styling
     return re.sub(r"\s+", " ", t).strip().lower().split()
 

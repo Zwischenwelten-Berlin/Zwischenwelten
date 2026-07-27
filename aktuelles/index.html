@@ -296,6 +296,7 @@
             <button type="button" class="lang-chip" data-lang="uk" aria-pressed="false">Українська</button>
             <button type="button" class="lang-chip" data-lang="ar" aria-pressed="false">العربية</button>
             <button type="button" class="lang-chip" data-lang="ku" aria-pressed="false">Kurdî</button>
+            <button type="button" class="lang-chip" data-lang="fa" aria-pressed="false">فارسی</button>
           </div>
         </div>
       </section>
@@ -304,6 +305,23 @@
       <section class="posts" aria-label="Blogbeiträge">
         <div class="container">
           <div class="posts-grid" id="posts-grid">
+
+            <a class="post-card" href="/aktuelles/medienpreis-2026-fa" data-lang="fa" hreflang="fa" lang="fa">
+              <div class="post-thumb">
+                <img src="/assets/blog/medienpreis-2026-cover.jpg" alt="نخستین دورهٔ جایزهٔ رسانه‌ای Zwischenwelten آغاز شد" loading="lazy" width="1280" height="905">
+                <span class="post-lang-badge"><span class="dot" aria-hidden="true"></span>فارسی</span>
+              </div>
+              <div class="post-info">
+                <p class="post-meta">
+                  <time datetime="2026-07-16">16 جولای 2026</time>
+                  <span class="sep" aria-hidden="true">·</span>
+                  <span>سلیمان باغ</span>
+                </p>
+                <h2 class="post-title">نخستین دورهٔ جایزهٔ رسانه‌ای Zwischenwelten آغاز شد</h2>
+                <p class="post-excerpt">جایزه‌ای برای روزنامه‌نگاری در جامعهٔ پسامهاجرت: روزنامه‌نگاری چگونه می‌تواند همبستگی اجتماعی را تقویت کند؟ کدام داستان‌ها به‌جای تقابل و قطبی‌سازی، مشارکت را تقویت می‌کنند؟ واقعیت‌های متنوع زندگی در آلمان چگونه می‌توانند در رسانه‌ها بازنعکاس یابند؟ دین چه …</p>
+                <span class="post-cta">ادامه مطلب →</span>
+              </div>
+            </a>
 
             <a class="post-card" href="/aktuelles/medienpreis-2026-ku" data-lang="ku" hreflang="ku" lang="ku">
               <div class="post-thumb">
@@ -467,7 +485,7 @@
       var chips = document.querySelectorAll('.lang-chip');
       var cards = document.querySelectorAll('.post-card');
       var empty = document.getElementById('posts-empty');
-      var langs = ['all', 'de', 'en', 'tr', 'ru', 'uk', 'ar', 'ku'];
+      var langs = ['all', 'de', 'en', 'tr', 'ru', 'uk', 'ar', 'ku', 'fa'];
 
       function applyFilter(lang, updateUrl){
         var visible = 0;
