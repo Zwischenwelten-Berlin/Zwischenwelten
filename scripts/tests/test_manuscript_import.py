@@ -135,3 +135,23 @@ def test_doc_conversion_missing_textutil_raises_manuscript_error(monkeypatch):
         assert False, "expected ManuscriptError"
     except ManuscriptError as e:
         assert "textutil" in str(e) or "macOS" in str(e)
+
+
+# ---- round 2 regressions --------------------------------------------------
+
+def test_blockquote_nested_in_li_stays_in_order_inside_list():
+    """Round-2 bug 1 (introduced by round 1's reordering): a <blockquote>
+    nested inside an <li> must not escape the list or reorder its
+    content. Losing the '> ' marker on the nested quote is acceptable;
+    reordering the words is not."""
+    md, _ = html_to_md(
+        "<ul><li>Before<blockquote><p>Quoted</p></blockquote>After</li>"
+        "<li>Second</li></ul>")
+    assert md == "- Before\n- Quoted\n- After\n- Second"
+
+def test_list_items_inside_table_cell_separated():
+    """Round-2 bug 2 (pre-existing): list items inside a table cell must
+    not fuse without a separator."""
+    md, _ = html_to_md(
+        "<table><tr><td><ul><li>A</li><li>B</li></ul></td></tr></table>")
+    assert md == "| A B |\n| --- |"

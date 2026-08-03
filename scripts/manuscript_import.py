@@ -47,6 +47,11 @@ class _MDBuilder(html.parser.HTMLParser):
         self.quote_depth = 0
         self.list_depth = 0       # nested <ul>/<ol>: flush list_items only
                                    # when the outermost one closes
+        self.container_stack = [] # 'li'/'quote' push order: whichever was
+                                   # opened first (index 0) decides how a
+                                   # closing text run is formatted, so
+                                   # nesting order -- not just depth --
+                                   # tells "> "-vs-"- " apart correctly
         self.heading = None       # '#'/'##'/'###' while inside h1..h6
         self.href = None
         self.link_text = []
@@ -89,14 +94,21 @@ class _MDBuilder(html.parser.HTMLParser):
             return
         if self.heading:
             self.blocks.append(f"{self.heading} {text}")
-        elif self.quote_depth > 0:
-            # A list item inside a blockquote must not get a leading
-            # dash: publish_post's pull-quote parser treats a leading
-            # dash line as an attribution, which would restructure the
-            # manuscript's wording.
-            self.quote_paras.append(f"> {text}")
-        elif self.li_depth > 0:
-            self.list_items.append(f"- {text}")
+            return
+        if self.container_stack:
+            # Depth counts alone can't tell "blockquote > ul > li" (must
+            # quote, no dash) apart from "ul > li > blockquote" (must
+            # stay in the list, losing the '> ' marker is acceptable) --
+            # both have li_depth>0 and quote_depth>0 at the point the
+            # text closes. Nesting ORDER does distinguish them: whichever
+            # of the two was opened first (container_stack[0], the
+            # outermost currently-open one) decides the format, so text
+            # never gets routed into a buffer that closes and flushes
+            # before its true, more-outer container does.
+            if self.container_stack[0] == "quote":
+                self.quote_paras.append(f"> {text}")
+            else:
+                self.list_items.append(f"- {text}")
         else:
             self.blocks.append(text)
 
@@ -123,11 +135,19 @@ class _MDBuilder(html.parser.HTMLParser):
             self._close_block()
             self.list_depth += 1
         elif tag == "li":
-            self._close_block()
-            self.li_depth += 1
+            if self.cell is not None:
+                # A <li> inside a table cell has no list to degrade
+                # into; separate it from its neighbors the same way
+                # multi-paragraph cells are, or "A"+"B" fuse into "AB".
+                self.cell.append(" ")
+            else:
+                self._close_block()
+                self.li_depth += 1
+                self.container_stack.append("li")
         elif tag == "blockquote":
             self._close_block()
             self.quote_depth += 1
+            self.container_stack.append("quote")
         elif tag in ("strong", "b"):
             self._emit("**")
         elif tag in ("em", "i"):
@@ -155,11 +175,15 @@ class _MDBuilder(html.parser.HTMLParser):
         elif tag == "p":
             self._close_block()
         elif tag == "li":
-            # Close while li_depth still reflects being inside this <li>
-            # (a nested list closing early must not evict trailing text
-            # from the still-open outer <li>).
-            self._close_block()
-            self.li_depth -= 1
+            if self.cell is not None:
+                pass  # nothing was opened outside the cell to close
+            else:
+                # Close while li_depth still reflects being inside this
+                # <li> (a nested list closing early must not evict
+                # trailing text from the still-open outer <li>).
+                self._close_block()
+                self.li_depth -= 1
+                self.container_stack.pop()
         elif tag in ("ul", "ol"):
             self._close_block()
             self.list_depth -= 1
@@ -169,6 +193,7 @@ class _MDBuilder(html.parser.HTMLParser):
         elif tag == "blockquote":
             self._close_block()
             self.quote_depth -= 1
+            self.container_stack.pop()
             if self.quote_depth == 0 and self.quote_paras:
                 self.blocks.append("\n".join(self.quote_paras))
                 self.quote_paras = []
