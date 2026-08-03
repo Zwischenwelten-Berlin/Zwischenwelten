@@ -204,7 +204,8 @@ class _MDBuilder(html.parser.HTMLParser):
         elif tag == "a":
             text = re.sub(r"\s+", " ", "".join(self.link_text)).strip()
             href, self.href = self.href, None
-            if text and href:
+            is_real_link = href and href.startswith(("http://", "https://", "mailto:"))
+            if text and is_real_link:
                 self._append_finalized(f"[{text}]({href})")
             elif text:
                 self._append_finalized(text)
@@ -323,7 +324,7 @@ def load_manuscript(filename, data):
     except ImportError:
         raise ManuscriptError(
             "Für Word-Dateien fehlt das Paket 'mammoth'. "
-            "Im Terminal ausführen:  pip3 install mammoth")
+            "Im Terminal ausführen:  python3 -m pip install mammoth")
     result = mammoth.convert_to_html(io.BytesIO(data), style_map=_STYLE_MAP)
     md, warnings = html_to_md(result.value)
     warnings += [m.message for m in result.messages]

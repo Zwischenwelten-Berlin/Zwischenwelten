@@ -40,6 +40,18 @@ def test_link():
     md, _ = html_to_md('<p>Siehe <a href="https://x.de">hier</a>.</p>')
     assert md == "Siehe [hier](https://x.de)."
 
+def test_footnote_anchors_become_plain_text():
+    # mammoth renders Word footnotes as anchors with fragment hrefs
+    # (#footnote-1, #footnote-ref-1); those fragments must never leak into
+    # the manuscript word stream, or they break the fidelity gate with
+    # meaningless diffs.
+    md, _ = html_to_md(
+        '<p>Erster Absatz.<sup><a href="#footnote-1">[1]</a></sup></p>'
+        '<ol><li>Die Fussnote. <a href="#footnote-ref-1">↑</a></li></ol>')
+    assert "[1]" in md
+    assert "↑" in md
+    assert "#footnote" not in md
+
 def test_table():
     md, _ = html_to_md(
         "<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>")

@@ -463,7 +463,7 @@
         <div class="banner banner-success">✓ Manuskript und Seite stimmen wortgleich überein.</div>
       </div>
 
-      <div id="warn-slug-exists" class="banner banner-error" hidden>Slug existiert bereits — Veröffentlichen wird fehlschlagen.</div>
+      <div id="warn-slug-exists" class="banner banner-error" hidden>Slug existiert bereits — bitte auf „Zurück“ klicken und den Slug ändern, um veröffentlichen zu können.</div>
       <div id="warn-branch" class="banner banner-warning" hidden></div>
 
       <div id="preview-frame-wrap" hidden>
@@ -827,7 +827,7 @@ function renderPreview(r) {
     branchWarn.hidden = true;
   }
 
-  setPublishEnabled(true);
+  setPublishEnabled(fidelityOk && !r.slug_exists);
 }
 
 async function doPublish() {

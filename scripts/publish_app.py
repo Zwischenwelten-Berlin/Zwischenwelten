@@ -41,6 +41,38 @@ def current_branch():
     return out
 
 
+def _rebase_in_progress():
+    """Whether a `git rebase` is actually mid-flight (rebase-merge/-apply
+    state dirs exist under .git). Most `git pull --rebase` failures (dirty
+    working tree, offline, auth) never get far enough to create these —
+    they fail before a rebase starts."""
+    for name in ("rebase-merge", "rebase-apply"):
+        code, path = run_git("rev-parse", "--git-path", name)
+        if code == 0 and path and os.path.exists(os.path.join(ROOT, path)):
+            return True
+    return False
+
+
+def _abort_stuck_rebase(log):
+    """Called after a failed `git pull --rebase`. Only runs `git rebase
+    --abort` (and only ever escalates to the German "repo may be stuck
+    mid-rebase" warning) when a rebase is actually in progress — otherwise
+    the abort itself fails with "No rebase in progress?" and the scary
+    warning misfires for ordinary pull failures. Returns the warning
+    suffix to append to the error message, or "" if there's nothing to
+    report.
+    """
+    if not _rebase_in_progress():
+        return ""
+    abort_code, abort_out = run_git("rebase", "--abort")
+    log.append(f"$ git rebase --abort\n{abort_out}")
+    if abort_code != 0 and "No rebase in progress" not in abort_out:
+        return (" Außerdem konnte der Rebase nicht automatisch abgebrochen werden — "
+                "das Repository steckt möglicherweise noch mitten in einem Rebase und "
+                "braucht manuelle Aufmerksamkeit im Terminal (git status, git rebase --abort).")
+    return ""
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
@@ -217,12 +249,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         log.append(f"$ git pull --rebase\n{out}")
         if code != 0:
             error = "git pull --rebase ist fehlgeschlagen — nichts wurde veröffentlicht."
-            abort_code, abort_out = run_git("rebase", "--abort")
-            log.append(f"$ git rebase --abort\n{abort_out}")
-            if abort_code != 0:
-                error += (" Außerdem konnte der Rebase nicht automatisch abgebrochen werden — "
-                          "das Repository steckt möglicherweise noch mitten in einem Rebase und "
-                          "braucht manuelle Aufmerksamkeit im Terminal (git status, git rebase --abort).")
+            error += _abort_stuck_rebase(log)
             self.send_json({"ok": False, "stage": "pull", "error": error,
                             "git_output": "\n\n".join(log)})
             return
@@ -280,12 +307,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         log.append(f"$ git pull --rebase\n{out}")
         if code != 0:
             error = "git pull --rebase ist fehlgeschlagen."
-            abort_code, abort_out = run_git("rebase", "--abort")
-            log.append(f"$ git rebase --abort\n{abort_out}")
-            if abort_code != 0:
-                error += (" Außerdem konnte der Rebase nicht automatisch abgebrochen werden — "
-                          "das Repository steckt möglicherweise noch mitten in einem Rebase und "
-                          "braucht manuelle Aufmerksamkeit im Terminal (git status, git rebase --abort).")
+            error += _abort_stuck_rebase(log)
             self.send_json({"ok": False, "stage": "pull", "error": error,
                             "git_output": "\n\n".join(log)})
             return
