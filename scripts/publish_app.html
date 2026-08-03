@@ -1,1 +1,886 @@
-<p>UI kommt in Task 4</p>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publish-App – ZWISCHENWELTEN</title>
+<style>
+  :root{
+    --accent:#123f7a;
+    --accent-dark:#0c2c58;
+    --accent-soft:rgba(18,63,122,0.07);
+    --bg:#f5f7fa;
+    --white:#ffffff;
+    --line:#e1e6ee;
+    --line-strong:#c7d0e0;
+    --text:#1c2733;
+    --text-soft:#5a6a7d;
+    --green:#1c7a41;
+    --green-bg:#eaf7ee;
+    --green-line:#bfe3cc;
+    --yellow:#8a6300;
+    --yellow-bg:#fff8e1;
+    --yellow-line:#f0c36d;
+    --red:#a3231b;
+    --red-bg:#fdecea;
+    --red-line:#f3b6b0;
+    --radius:14px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  main{
+    max-width:720px;
+    margin:0 auto;
+    padding:32px 20px 80px;
+  }
+  h1{
+    font-size:22px;
+    margin:0 0 20px;
+    color:var(--accent);
+    letter-spacing:-0.01em;
+  }
+  h2.subhead{
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--text-soft);
+    margin:24px 0 12px;
+  }
+
+  /* ---------- steps ---------- */
+  #steps{
+    display:flex;
+    list-style:none;
+    margin:0 0 24px;
+    padding:0;
+    gap:6px;
+  }
+  #steps li{
+    flex:1;
+    text-align:center;
+    font-size:11.5px;
+    font-weight:600;
+    letter-spacing:.03em;
+    color:var(--text-soft);
+    padding-bottom:10px;
+    border-bottom:3px solid var(--line-strong);
+    transition:color .15s, border-color .15s;
+  }
+  #steps li.is-active{ color:var(--accent); border-color:var(--accent); }
+  #steps li.is-done{ color:var(--accent); border-color:rgba(18,63,122,0.35); }
+
+  /* ---------- card ---------- */
+  .card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:28px;
+    box-shadow:0 1px 3px rgba(20,30,50,0.06);
+  }
+
+  /* ---------- banners ---------- */
+  .banner{
+    border-radius:10px;
+    padding:12px 16px;
+    font-size:13.5px;
+    margin:0 0 16px;
+  }
+  .banner strong{ display:block; margin-bottom:4px; }
+  .banner ul{ margin:4px 0 0; padding-left:18px; }
+  .banner-error{ background:var(--red-bg); border:1px solid var(--red-line); color:var(--red); }
+  .banner-warning{ background:var(--yellow-bg); border:1px solid var(--yellow-line); color:var(--yellow); }
+  .banner-success{ background:var(--green-bg); border:1px solid var(--green-line); color:var(--green); }
+  .banner.compact{ margin:8px 0 0; }
+
+  /* ---------- drop zones ---------- */
+  .dropzones{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:24px;
+  }
+  .dropzone{
+    border:2px dashed var(--line-strong);
+    border-radius:12px;
+    padding:32px 16px;
+    text-align:center;
+    cursor:pointer;
+    background:var(--bg);
+    transition:border-color .15s, background .15s;
+  }
+  .dropzone:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .dropzone.is-dragover{ border-color:var(--accent); background:var(--accent-soft); }
+  .dropzone.has-file{ border-style:solid; border-color:var(--accent); background:var(--white); }
+  .dropzone .zone-icon{ font-size:26px; margin-bottom:6px; }
+  .dropzone .zone-label{ font-weight:700; font-size:14px; }
+  .dropzone .zone-hint{ font-size:11.5px; color:var(--text-soft); margin-top:2px; }
+  .dropzone .zone-name{
+    display:block;
+    margin-top:10px;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--accent);
+    word-break:break-all;
+  }
+  @media (max-width:520px){
+    .dropzones{ grid-template-columns:1fr; }
+  }
+
+  /* ---------- buttons ---------- */
+  .actions{ display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
+  .actions-split{ justify-content:space-between; align-items:center; }
+  .btn{
+    appearance:none;
+    border:none;
+    border-radius:8px;
+    padding:10px 22px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-primary:hover:not(:disabled){ background:var(--accent-dark); }
+  .btn-primary:disabled{ background:#a9b6cb; cursor:not-allowed; }
+  .btn-secondary{ background:transparent; color:var(--accent); border:1px solid var(--line-strong); }
+  .btn-secondary:hover{ border-color:var(--accent); }
+  .link-muted{
+    font-size:13px;
+    color:var(--text-soft);
+    text-decoration:none;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .link-muted:hover{ color:var(--accent); border-color:var(--accent); }
+
+  /* ---------- form fields ---------- */
+  .field{ margin-bottom:16px; display:flex; flex-direction:column; gap:6px; }
+  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:520px){ .field-row{ grid-template-columns:1fr; } }
+  label{
+    font-size:11.5px;
+    font-weight:700;
+    color:var(--text-soft);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  input[type=text], input[type=date], select, textarea{
+    font:inherit;
+    font-size:14px;
+    padding:9px 11px;
+    border:1px solid var(--line-strong);
+    border-radius:8px;
+    background:#fff;
+    color:var(--text);
+    width:100%;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  textarea#f-markdown{
+    min-height:280px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.5px;
+    line-height:1.55;
+    margin-top:8px;
+  }
+  details.md-details{ margin:8px 0 20px; }
+  details.md-details summary{
+    cursor:pointer;
+    font-size:13px;
+    font-weight:600;
+    color:var(--accent);
+  }
+  .static-value{ font-size:16px; font-weight:700; }
+  .static-value.subtitle{ font-size:13px; font-weight:500; color:var(--text-soft); margin-top:2px; }
+  .static-value.empty{ color:var(--text-soft); font-weight:500; font-style:italic; }
+  .hint-ok{ margin:0; font-size:13px; font-weight:600; color:var(--green); }
+  .checkbox-label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    font-weight:500;
+    text-transform:none;
+    color:var(--yellow);
+    margin-top:8px;
+  }
+  .checkbox-label input{ width:auto; }
+
+  /* ---------- preview screen ---------- */
+  #preview-frame-wrap{ margin:16px 0; }
+  #preview-frame{
+    width:100%;
+    height:70vh;
+    min-height:420px;
+    border:1px solid var(--line-strong);
+    border-radius:10px;
+    background:#fff;
+  }
+  #card-preview-wrap{ margin-bottom:20px; }
+  .diffs-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12.5px;
+    margin-top:10px;
+    background:#fff;
+    border:1px solid var(--red-line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .diffs-table th, .diffs-table td{
+    text-align:left;
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  .diffs-table th{ background:var(--red-bg); color:var(--red); font-weight:700; }
+  .diffs-table tr:last-child td{ border-bottom:none; }
+
+  /* ---------- result screen ---------- */
+  .result-check{
+    width:56px; height:56px;
+    border-radius:50%;
+    background:var(--green-bg);
+    border:2px solid var(--green-line);
+    color:var(--green);
+    font-size:28px;
+    font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:16px;
+  }
+  #result-success h2{ margin:0 0 8px; color:var(--green); }
+  #result-success a{ color:var(--accent); font-weight:600; word-break:break-all; }
+  .text-soft{ color:var(--text-soft); font-size:13.5px; }
+  pre{
+    background:#f2f4f8;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px;
+    font-size:12px;
+    overflow:auto;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+
+  /* ---------- scoped house-style card preview ---------- */
+  .site-card-scope{
+    --white:#ffffff;
+    --line:rgba(18,63,122,0.08);
+    --line-strong:rgba(18,63,122,0.12);
+    --text:#123f7a;
+    --text-soft:#32527f;
+    --accent:#e2851e;
+  }
+  .site-card-scope .posts-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    max-width:340px;
+    margin:0 auto;
+  }
+  .site-card-scope .post-card{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    background:var(--white);
+    border:1px solid var(--line-strong);
+    border-radius:18px;
+    overflow:hidden;
+    color:var(--text);
+    text-decoration:none;
+    isolation:isolate;
+  }
+  .site-card-scope .post-thumb{
+    position:relative;
+    aspect-ratio:16/10;
+    overflow:hidden;
+    background:#faf5ec;
+    border-bottom:1px solid var(--line);
+  }
+  .site-card-scope .post-thumb img{ width:100%; height:100%; object-fit:contain; }
+  .site-card-scope .post-lang-badge{
+    position:absolute; top:14px; right:14px; z-index:2;
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    color:#fff; background:rgba(18,63,122,0.6);
+    padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.18);
+  }
+  .site-card-scope .post-lang-badge .dot{ width:5px; height:5px; border-radius:50%; background:var(--accent); }
+  .site-card-scope .post-info{ padding:18px 20px 20px; display:flex; flex-direction:column; gap:9px; }
+  .site-card-scope .post-meta{
+    font-size:11px; letter-spacing:.1em; text-transform:uppercase; font-weight:600;
+    color:var(--text-soft); display:flex; flex-wrap:wrap; gap:6px; margin:0;
+  }
+  .site-card-scope .post-meta .sep{ color:var(--accent); }
+  .site-card-scope .post-title{ margin:0; font-size:19px; line-height:1.25; letter-spacing:-0.02em; font-weight:700; color:var(--text); }
+  .site-card-scope .post-excerpt{ margin:0; font-size:13px; line-height:1.6; color:#4f5964; }
+  .site-card-scope .post-cta{
+    margin-top:auto; align-self:flex-start; font-size:13px; font-weight:600; color:var(--text);
+    padding-top:8px; padding-bottom:2px; border-bottom:1px solid var(--text);
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Neuer Blogpost</h1>
+  <ol id="steps">
+    <li data-step="screen-drop">1 Dateien</li>
+    <li data-step="screen-form">2 Angaben</li>
+    <li data-step="screen-preview">3 Vorschau</li>
+    <li data-step="screen-result">4 Fertig</li>
+  </ol>
+
+  <!-- SCREEN 1: DROP -->
+  <section id="screen-drop">
+    <div class="card">
+      <div id="drop-error" class="banner banner-error" hidden></div>
+
+      <div class="dropzones">
+        <div class="dropzone" id="zone-manuscript" tabindex="0" role="button" aria-label="Manuskript auswählen (.md, .docx oder .doc)">
+          <div class="zone-icon" aria-hidden="true">📄</div>
+          <div class="zone-label">Manuskript</div>
+          <div class="zone-hint">.md · .docx · .doc</div>
+          <div class="zone-name" id="name-manuscript"></div>
+          <input type="file" id="input-manuscript" accept=".md,.docx,.doc" hidden>
+        </div>
+
+        <div class="dropzone" id="zone-cover" tabindex="0" role="button" aria-label="Titelbild auswählen (.jpg, .jpeg oder .png)">
+          <div class="zone-icon" aria-hidden="true">🖼️</div>
+          <div class="zone-label">Titelbild</div>
+          <div class="zone-hint">.jpg · .jpeg · .png</div>
+          <div class="zone-name" id="name-cover"></div>
+          <input type="file" id="input-cover" accept=".jpg,.jpeg,.png" hidden>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="btn-continue" class="btn btn-primary" disabled>Weiter</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 2: FORM -->
+  <section id="screen-form" hidden>
+    <div class="card">
+      <div id="form-error" class="banner banner-error" hidden></div>
+
+      <div id="convert-warnings-wrap" class="banner banner-warning" hidden>
+        <strong>Hinweise zur Konvertierung</strong>
+        <ul id="convert-warnings"></ul>
+      </div>
+
+      <div class="field">
+        <label>Titel</label>
+        <div id="f-title-display" class="static-value"></div>
+        <div id="f-subtitle-display" class="static-value subtitle" hidden></div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="f-lang">Sprache</label>
+          <select id="f-lang"></select>
+        </div>
+        <div class="field">
+          <label for="f-date">Datum</label>
+          <input type="date" id="f-date">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-author">Autor:in</label>
+        <input type="text" id="f-author">
+        <p id="author-ok" class="hint-ok" hidden></p>
+        <div id="author-warn" class="banner banner-warning compact" hidden>
+          <p id="author-warn-text" style="margin:0;"></p>
+          <label class="checkbox-label">
+            <input type="checkbox" id="f-new-author">
+            Als neue Autor:in registrieren
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-slug">Slug</label>
+        <input type="text" id="f-slug">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="f-tag">Tag</label>
+          <input type="text" id="f-tag" placeholder="z. B. Medienpreis">
+        </div>
+        <div class="field">
+          <label for="f-highlight">Hervorhebung im Titel</label>
+          <input type="text" id="f-highlight" placeholder="Wortlaut aus dem Titel">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-alt">Alt-Text (Titelbild)</label>
+        <input type="text" id="f-alt">
+      </div>
+
+      <div class="field">
+        <label for="f-caption">Bildunterschrift</label>
+        <input type="text" id="f-caption">
+      </div>
+
+      <details class="md-details">
+        <summary>Markdown bearbeiten (maßgeblich für Veröffentlichung &amp; Abgleich)</summary>
+        <textarea id="f-markdown" spellcheck="false"></textarea>
+      </details>
+
+      <div class="actions actions-split">
+        <a href="#" id="btn-restart" class="link-muted">← Andere Dateien wählen</a>
+        <button type="button" id="btn-preview" class="btn btn-primary">Vorschau</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 3: PREVIEW -->
+  <section id="screen-preview" hidden>
+    <div class="card">
+      <div id="preview-fidelity-bad" hidden>
+        <div class="banner banner-error">
+          ✗ Die erzeugte Seite stimmt nicht wortgleich mit dem Manuskript überein. Bitte im Markdown korrigieren und erneut auf „Vorschau“ klicken.
+        </div>
+        <div id="diffs-wrap">
+          <table class="diffs-table">
+            <thead><tr><th>Änderung</th><th>Manuskript</th><th>Seite</th></tr></thead>
+            <tbody id="diffs-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="preview-fidelity-ok" hidden>
+        <div class="banner banner-success">✓ Manuskript und Seite stimmen wortgleich überein.</div>
+      </div>
+
+      <div id="warn-slug-exists" class="banner banner-error" hidden>Slug existiert bereits — Veröffentlichen wird fehlschlagen.</div>
+      <div id="warn-branch" class="banner banner-warning" hidden></div>
+
+      <div id="preview-frame-wrap" hidden>
+        <h2 class="subhead">Beitragsseite</h2>
+        <iframe id="preview-frame" title="Vorschau des Beitrags"></iframe>
+      </div>
+
+      <div id="card-preview-wrap" hidden>
+        <h2 class="subhead">Karte in der Übersicht</h2>
+        <div class="site-card-scope">
+          <div class="posts-grid" id="card-preview-slot"></div>
+        </div>
+      </div>
+
+      <div class="actions actions-split">
+        <button type="button" id="btn-back-to-form" class="btn btn-secondary">Zurück</button>
+        <button type="button" id="btn-publish" class="btn btn-primary" disabled>Veröffentlichen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 4: RESULT -->
+  <section id="screen-result" hidden>
+    <div class="card">
+      <div id="result-success" hidden>
+        <div class="result-check" aria-hidden="true">✓</div>
+        <h2>Veröffentlicht!</h2>
+        <p><a id="result-link" href="#" target="_blank" rel="noopener"></a></p>
+        <p class="text-soft">GitHub Pages braucht 1–2 Minuten, bis die Seite live ist.</p>
+        <details><summary>Git-Ausgabe</summary><pre id="result-git-output-ok"></pre></details>
+        <div class="actions" style="justify-content:flex-start; margin-top:20px;">
+          <a href="#" id="btn-new-post" class="link-muted">Weiteren Beitrag veröffentlichen</a>
+        </div>
+      </div>
+
+      <div id="result-failure" hidden>
+        <div id="result-error" class="banner banner-error"></div>
+        <pre id="result-git-output-fail"></pre>
+        <div class="actions" style="justify-content:flex-start; margin-top:16px;">
+          <button type="button" id="btn-retry-push" class="btn btn-primary" hidden>Erneut versuchen (pull --rebase + push)</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const state = { manuscript: null, cover: null, convert: null, preview: null };
+let previewFresh = false;      // gates the publish button
+let publishPending = false;
+let convertPending = false;
+let previewPending = false;
+let retryPending = false;
+
+async function api(path, payload) {
+  const res = await fetch(path, { method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}) });
+  return res.json();
+}
+
+function fileToB64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(",", 2)[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+const STEP_ORDER = ["screen-drop", "screen-form", "screen-preview", "screen-result"];
+
+function updateSteps(activeId) {
+  const idx = STEP_ORDER.indexOf(activeId);
+  document.querySelectorAll("#steps li").forEach((li, i) => {
+    li.classList.toggle("is-active", i === idx);
+    li.classList.toggle("is-done", i < idx);
+  });
+}
+
+function show(id) {
+  for (const s of document.querySelectorAll("main > section")) s.hidden = true;
+  document.getElementById(id).hidden = false;
+  updateSteps(id);
+}
+
+function showError(screenId, message) {
+  show(screenId);
+  const map = { "screen-drop": "drop-error", "screen-form": "form-error" };
+  const el = document.getElementById(map[screenId]);
+  if (el) { el.textContent = message; el.hidden = false; }
+}
+
+// ---- drop zones -----------------------------------------------------------
+function setFile(key, file, zone, nameEl) {
+  state[key] = file;
+  nameEl.textContent = file.name;
+  zone.classList.add("has-file");
+  updateContinueButton();
+}
+
+function updateContinueButton() {
+  document.getElementById("btn-continue").disabled = !(state.manuscript && state.cover);
+}
+
+function setupDropzone(zoneId, inputId, nameId, key) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  const nameEl = document.getElementById(nameId);
+
+  zone.addEventListener("click", () => input.click());
+  zone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); }
+  });
+  input.addEventListener("change", () => {
+    if (input.files[0]) setFile(key, input.files[0], zone, nameEl);
+  });
+  zone.addEventListener("dragenter", (e) => { e.preventDefault(); zone.classList.add("is-dragover"); });
+  zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("is-dragover"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("is-dragover"));
+  zone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    zone.classList.remove("is-dragover");
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(key, file, zone, nameEl);
+  });
+}
+
+// ---- screen 1: convert ------------------------------------------------
+async function doConvert() {
+  if (convertPending) return;
+  convertPending = true;
+  const btn = document.getElementById("btn-continue");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Wird analysiert …";
+  document.getElementById("drop-error").hidden = true;
+
+  try {
+    const r = await api("/api/convert", {
+      manuscript_name: state.manuscript.name,
+      manuscript_b64: await fileToB64(state.manuscript),
+      cover_name: state.cover.name,
+      cover_b64: await fileToB64(state.cover),
+    });
+    if (!r.ok) { showError("screen-drop", r.error); return; }
+    state.convert = r;
+    fillForm(r);
+    show("screen-form");
+  } catch (e) {
+    showError("screen-drop", "Netzwerkfehler: " + (e && e.message ? e.message : e));
+  } finally {
+    convertPending = false;
+    btn.textContent = originalText;
+    updateContinueButton();
+  }
+}
+
+// ---- screen 2: form -----------------------------------------------------
+function renderAuthorStatus() {
+  const val = document.getElementById("f-author").value.trim();
+  const okEl = document.getElementById("author-ok");
+  const warnEl = document.getElementById("author-warn");
+  const warnText = document.getElementById("author-warn-text");
+  const original = state.convert && state.convert.author;
+  const matchesOriginal = original && original.name && val === original.name.trim();
+
+  if (matchesOriginal && original.known) {
+    okEl.hidden = false;
+    okEl.textContent = "✓ erkannt als " + original.canonical;
+    warnEl.hidden = true;
+    document.getElementById("f-new-author").checked = false;
+  } else {
+    okEl.hidden = true;
+    warnEl.hidden = false;
+    warnText.textContent = val
+      ? "Unbekannte Autor:in — „" + val + "“ ist in der Autor:innen-Liste nicht bekannt."
+      : "Keine Autor:in im Manuskript gefunden — bitte eintragen.";
+  }
+}
+
+function fillForm(r) {
+  const titleEl = document.getElementById("f-title-display");
+  if (r.title) {
+    titleEl.textContent = r.title;
+    titleEl.classList.remove("empty");
+  } else {
+    titleEl.textContent = "Kein Titel gefunden — bitte im Markdown eine „# Titel“-Zeile ergänzen.";
+    titleEl.classList.add("empty");
+  }
+
+  const subEl = document.getElementById("f-subtitle-display");
+  if (r.subtitle) { subEl.hidden = false; subEl.textContent = r.subtitle; }
+  else { subEl.hidden = true; subEl.textContent = ""; }
+
+  const langSel = document.getElementById("f-lang");
+  langSel.innerHTML = "";
+  for (const [code, label] of Object.entries(r.langs)) {
+    const opt = document.createElement("option");
+    opt.value = code;
+    opt.textContent = label;
+    langSel.appendChild(opt);
+  }
+  langSel.value = r.lang;
+
+  document.getElementById("f-date").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("f-author").value = r.author.name || "";
+  document.getElementById("f-slug").value = r.slug || "";
+  document.getElementById("f-tag").value = "";
+  document.getElementById("f-highlight").value = "";
+  document.getElementById("f-alt").value = r.title || "";
+  document.getElementById("f-caption").value = "";
+  document.getElementById("f-markdown").value = r.markdown || "";
+  document.getElementById("f-new-author").checked = false;
+
+  renderAuthorStatus();
+
+  const warnWrap = document.getElementById("convert-warnings-wrap");
+  const warnList = document.getElementById("convert-warnings");
+  warnList.innerHTML = "";
+  if (r.warnings && r.warnings.length) {
+    warnWrap.hidden = false;
+    for (const w of r.warnings) {
+      const li = document.createElement("li");
+      li.textContent = w;
+      warnList.appendChild(li);
+    }
+  } else {
+    warnWrap.hidden = true;
+  }
+
+  document.getElementById("form-error").hidden = true;
+  setPublishEnabled(false); // any fresh convert needs its own fresh preview
+}
+
+function formPayload() {
+  return {
+    markdown: document.getElementById("f-markdown").value,
+    lang: document.getElementById("f-lang").value,
+    date: document.getElementById("f-date").value,
+    author: document.getElementById("f-author").value.trim(),
+    slug: document.getElementById("f-slug").value.trim(),
+    tag: document.getElementById("f-tag").value.trim(),
+    highlight: document.getElementById("f-highlight").value.trim(),
+    alt: document.getElementById("f-alt").value.trim(),
+    caption: document.getElementById("f-caption").value.trim(),
+    new_author: document.getElementById("f-new-author").checked,
+  };
+}
+
+async function doPreview() {
+  if (previewPending) return;
+  previewPending = true;
+  const btn = document.getElementById("btn-preview");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Wird geprüft …";
+  document.getElementById("form-error").hidden = true;
+  setPublishEnabled(false); // any preview attempt invalidates the previous one until it succeeds
+
+  try {
+    const r = await api("/api/preview", formPayload());
+    if (!r.ok) { showError("screen-form", r.error); return; }
+    state.preview = r;
+    renderPreview(r);
+    show("screen-preview");
+  } catch (e) {
+    showError("screen-form", "Netzwerkfehler: " + (e && e.message ? e.message : e));
+  } finally {
+    previewPending = false;
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+// ---- screen 3: preview --------------------------------------------------
+function renderDiffs(diffs) {
+  const opLabels = { replace: "Ersetzt", delete: "Nur im Manuskript", insert: "Nur auf der Seite" };
+  const body = document.getElementById("diffs-table-body");
+  body.innerHTML = "";
+  for (const [tag, mdWords, pageWords] of diffs) {
+    const tr = document.createElement("tr");
+    const tdTag = document.createElement("td");
+    tdTag.textContent = opLabels[tag] || tag;
+    const tdMd = document.createElement("td");
+    tdMd.textContent = mdWords;
+    const tdPage = document.createElement("td");
+    tdPage.textContent = pageWords;
+    tr.append(tdTag, tdMd, tdPage);
+    body.appendChild(tr);
+  }
+}
+
+function setPublishEnabled(v) {
+  previewFresh = v;
+  refreshPublishButton();
+}
+
+function setPublishPending(v) {
+  publishPending = v;
+  refreshPublishButton();
+}
+
+function refreshPublishButton() {
+  const btn = document.getElementById("btn-publish");
+  btn.disabled = publishPending || !previewFresh;
+  btn.textContent = publishPending ? "Wird veröffentlicht …" : "Veröffentlichen";
+}
+
+function renderPreview(r) {
+  const fidelityOk = !!r.fidelity_ok;
+  document.getElementById("preview-fidelity-ok").hidden = !fidelityOk;
+  document.getElementById("preview-fidelity-bad").hidden = fidelityOk;
+  document.getElementById("preview-frame-wrap").hidden = !fidelityOk;
+  document.getElementById("card-preview-wrap").hidden = !fidelityOk;
+  document.getElementById("warn-slug-exists").hidden = true;
+  document.getElementById("warn-branch").hidden = true;
+
+  if (!fidelityOk) {
+    renderDiffs(r.diffs || []);
+    setPublishEnabled(false);
+    return;
+  }
+
+  document.getElementById("preview-frame").src = "/preview/page?ts=" + Date.now();
+  document.getElementById("card-preview-slot").innerHTML = r.card_html;
+
+  document.getElementById("warn-slug-exists").hidden = !r.slug_exists;
+
+  const branchWarn = document.getElementById("warn-branch");
+  if (r.branch !== "main") {
+    branchWarn.hidden = false;
+    branchWarn.textContent = "Achtung: Branch „" + r.branch + "“ — GitHub Pages veröffentlicht nur main.";
+  } else {
+    branchWarn.hidden = true;
+  }
+
+  setPublishEnabled(true);
+}
+
+async function doPublish() {
+  if (publishPending || !previewFresh) return;
+  setPublishPending(true);
+  try {
+    const r = await api("/api/publish");
+    renderResult(r);
+  } catch (e) {
+    renderResult({ ok: false, error: "Netzwerkfehler: " + (e && e.message ? e.message : e), git_output: "" });
+  }
+  setPublishPending(false);
+  show("screen-result");
+}
+
+async function doRetryPush() {
+  if (retryPending) return;
+  retryPending = true;
+  const btn = document.getElementById("btn-retry-push");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Wird erneut versucht …";
+  try {
+    const r = await api("/api/retry-push");
+    renderResult(r);
+  } catch (e) {
+    renderResult({ ok: false, error: "Netzwerkfehler: " + (e && e.message ? e.message : e), git_output: "" });
+  } finally {
+    retryPending = false;
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+// ---- screen 4: result ----------------------------------------------------
+function renderResult(r) {
+  document.getElementById("result-success").hidden = !r.ok;
+  document.getElementById("result-failure").hidden = !!r.ok;
+
+  if (r.ok) {
+    const link = document.getElementById("result-link");
+    link.href = r.url;
+    link.textContent = r.url;
+    document.getElementById("result-git-output-ok").textContent = r.git_output || "";
+  } else {
+    document.getElementById("result-error").textContent = r.error || "Unbekannter Fehler.";
+    document.getElementById("result-git-output-fail").textContent = r.git_output || "";
+    const retryBtn = document.getElementById("btn-retry-push");
+    retryBtn.hidden = r.stage !== "push";
+    retryBtn.textContent = "Erneut versuchen (pull --rebase + push)";
+    retryBtn.disabled = false;
+  }
+}
+
+// ---- wiring ---------------------------------------------------------------
+setupDropzone("zone-manuscript", "input-manuscript", "name-manuscript", "manuscript");
+setupDropzone("zone-cover", "input-cover", "name-cover", "cover");
+
+document.getElementById("btn-continue").addEventListener("click", doConvert);
+document.getElementById("btn-preview").addEventListener("click", doPreview);
+document.getElementById("btn-back-to-form").addEventListener("click", () => {
+  setPublishEnabled(false);
+  show("screen-form");
+});
+document.getElementById("btn-publish").addEventListener("click", doPublish);
+document.getElementById("btn-retry-push").addEventListener("click", doRetryPush);
+document.getElementById("f-author").addEventListener("input", renderAuthorStatus);
+
+document.getElementById("btn-restart").addEventListener("click", (e) => {
+  e.preventDefault();
+  location.reload();
+});
+document.getElementById("btn-new-post").addEventListener("click", (e) => {
+  e.preventDefault();
+  location.reload();
+});
+
+document.getElementById("f-date").value = new Date().toISOString().slice(0, 10);
+show("screen-drop");
+</script>
+</body>
+</html>
