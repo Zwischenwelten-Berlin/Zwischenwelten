@@ -83,7 +83,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(404, "No preview yet")
             else:
                 self.send_html(SESSION["preview"]["page_html"])
-        elif SESSION["cover_rel"] and path == SESSION["cover_rel"] and SESSION["cover_path"]:
+        elif (SESSION["cover_rel"] and path == SESSION["cover_rel"] and SESSION["cover_path"]
+              and os.path.exists(SESSION["cover_path"])):
             with open(SESSION["cover_path"], "rb") as fh:
                 data = fh.read()
             self.send_response(200)
@@ -115,6 +116,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json({"ok": False, "error": f"{type(e).__name__}: {e}"}, status=500)
 
     def api_convert(self, body):
+        # A new manuscript invalidates any prior preview/publish state — never
+        # let a stale draft be published after a fresh conversion.
+        SESSION["preview"] = None
+        SESSION["publish_args"] = None
         md, warnings = load_manuscript(body["manuscript_name"],
                                        base64.b64decode(body["manuscript_b64"]))
         # cover -> temp file, remember the future URL for the preview
@@ -183,9 +188,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         code, out = run_git("pull", "--rebase")
         log.append(f"$ git pull --rebase\n{out}")
         if code != 0:
-            run_git("rebase", "--abort")
-            self.send_json({"ok": False, "stage": "pull", "error":
-                            "git pull --rebase ist fehlgeschlagen — nichts wurde veröffentlicht.",
+            error = "git pull --rebase ist fehlgeschlagen — nichts wurde veröffentlicht."
+            abort_code, abort_out = run_git("rebase", "--abort")
+            log.append(f"$ git rebase --abort\n{abort_out}")
+            if abort_code != 0:
+                error += (" Außerdem konnte der Rebase nicht automatisch abgebrochen werden — "
+                          "das Repository steckt möglicherweise noch mitten in einem Rebase und "
+                          "braucht manuelle Aufmerksamkeit im Terminal (git status, git rebase --abort).")
+            self.send_json({"ok": False, "stage": "pull", "error": error,
                             "git_output": "\n\n".join(log)})
             return
 
@@ -198,12 +208,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         code, out = run_git("add", "--", *r["files"])
         log.append(f"$ git add {' '.join(r['files'])}\n{out}")
+        if code != 0:
+            self.send_json({"ok": False, "stage": "add",
+                            "error": "git add ist fehlgeschlagen. Die Beitragsdateien wurden bereits "
+                                     "geschrieben — bitte im Terminal prüfen.",
+                            "git_output": "\n\n".join(log), "files": r["files"]})
+            return
+
         msg = f"content: add {r['title']}"
         code, out = run_git("commit", "-m", msg)
         log.append(f"$ git commit -m {msg!r}\n{out}")
         if code != 0:
-            self.send_json({"ok": False, "stage": "commit", "error": "git commit ist fehlgeschlagen.",
-                            "git_output": "\n\n".join(log)})
+            self.send_json({"ok": False, "stage": "commit",
+                            "error": "git commit ist fehlgeschlagen. Die Dateien des Beitrags sind "
+                                     "bereits geschrieben und mit git add vorgemerkt (im Index) — "
+                                     "bitte im Terminal beheben (z. B. Git-Identität oder ein "
+                                     "Pre-Commit-Hook) und dort manuell committen und pushen.",
+                            "git_output": "\n\n".join(log), "files": r["files"]})
             return
 
         code, out = run_git("push", "origin", "HEAD")
@@ -215,6 +236,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             "git_output": "\n\n".join(log)})
             return
 
+        # Publish succeeded: the temp cover is now redundant — the real
+        # /assets/blog/... file was just committed, so let it be served
+        # from the repo like any other post's cover from now on.
+        SESSION["cover_rel"] = None
+        SESSION["cover_path"] = None
+
         self.send_json({"ok": True,
                         "url": f"https://zwischenwelten-berlin.de/aktuelles/{r['slug']}",
                         "commit": msg, "git_output": "\n\n".join(log)})
@@ -224,8 +251,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         code, out = run_git("pull", "--rebase")
         log.append(f"$ git pull --rebase\n{out}")
         if code != 0:
-            run_git("rebase", "--abort")
-            self.send_json({"ok": False, "stage": "pull", "error": "git pull --rebase ist fehlgeschlagen.",
+            error = "git pull --rebase ist fehlgeschlagen."
+            abort_code, abort_out = run_git("rebase", "--abort")
+            log.append(f"$ git rebase --abort\n{abort_out}")
+            if abort_code != 0:
+                error += (" Außerdem konnte der Rebase nicht automatisch abgebrochen werden — "
+                          "das Repository steckt möglicherweise noch mitten in einem Rebase und "
+                          "braucht manuelle Aufmerksamkeit im Terminal (git status, git rebase --abort).")
+            self.send_json({"ok": False, "stage": "pull", "error": error,
                             "git_output": "\n\n".join(log)})
             return
         code, out = run_git("push", "origin", "HEAD")
@@ -239,7 +272,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         "commit": "", "git_output": "\n\n".join(log)})
 
     def log_message(self, fmt, *args):   # quieter console
-        if "/api/" in (args[0] if args else ""):
+        # send_error()/log_error() call this with args[0] being an HTTPStatus
+        # (not a request-line string) — guard so a plain 404 never raises and
+        # drops the connection before send_error can write the response.
+        line = args[0] if args else ""
+        if isinstance(line, str) and "/api/" in line:
             super().log_message(fmt, *args)
 
 
