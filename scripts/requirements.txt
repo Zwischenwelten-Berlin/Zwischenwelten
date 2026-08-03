@@ -1,0 +1,4 @@
+# publish app: Word (.docx) import
+mammoth
+# dev only: tests
+pytest
