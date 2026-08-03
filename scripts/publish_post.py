@@ -85,6 +85,13 @@ def info(msg):
     print(f"  {msg}")
 
 
+class PublishError(Exception):
+    """Raised by build_post instead of exiting; .diffs carries fidelity diffs."""
+    def __init__(self, message, diffs=None):
+        super().__init__(message)
+        self.diffs = diffs or []
+
+
 # --------------------------------------------------------------------------
 # Author registry
 # --------------------------------------------------------------------------
@@ -308,13 +315,13 @@ def md_to_blocks(md, lang):
     return "\n\n".join(out)
 
 
-def parse_md(path, lang, subtitle_mode="auto"):
-    text = open(path, encoding="utf-8").read().replace("\r\n", "\n")
+def parse_md(text, lang, subtitle_mode="auto"):
+    text = text.replace("\r\n", "\n")
     text = BYLINE.sub("", text)  # byline is metadata, not body copy
 
     m = re.search(r"^#\s+(.*)$", text, re.M)
     if not m:
-        die("The manuscript has no '# Title' line.")
+        raise PublishError("The manuscript has no '# Title' line.")
     title = m.group(1).strip()
     rest = text[m.end():].lstrip("\n")
 
@@ -354,9 +361,8 @@ def words(text):
     return re.sub(r"\s+", " ", t).strip().lower().split()
 
 
-def check_fidelity(md_path, page_html):
-    src = open(md_path, encoding="utf-8").read()
-    src = BYLINE.sub("", src)
+def check_fidelity(md_text, page_html):
+    src = BYLINE.sub("", md_text)
     body = re.search(r'<div class="article-prose">(.*?)<div class="article-back">',
                      page_html, re.S)
     title = re.search(r'<h1 class="article-title"[^>]*>(.*?)</h1>', page_html, re.S)
@@ -624,6 +630,140 @@ def add_card(index_html, card):
 
 
 # --------------------------------------------------------------------------
+def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None,
+               highlight=None, alt=None, caption=None, subtitle_from="auto",
+               new_author=False, write=False):
+    """Build (and optionally write) a blog post from a manuscript + cover image.
+
+    Raises PublishError on any failure. Returns a dict describing the post;
+    see the module docstring / task brief for the exact shape.
+    """
+    cfg = LANGS[lang]
+
+    # ---- author -----------------------------------------------------------
+    registry = load_authors()
+    name = author or find_author_in_md(md_text)
+    if not name:
+        raise PublishError(
+            "No author found. Add a byline like 'Author: Name' to the manuscript, "
+            "or pass --author \"Name\".")
+    entry, score = match_author(name, registry)
+    author_new = False
+    if entry and not new_author:
+        author_display = entry.get("names", {}).get(lang) or entry["canonical"]
+        author_canonical = entry["canonical"]
+        info(f"Author: '{name}' → known author {entry['canonical']} "
+             f"(match {score:.0%}), using '{author_display}' for {lang}.")
+    else:
+        author_display = name
+        author_canonical = None
+        if not new_author:
+            raise PublishError(
+                f"'{name}' does not match any known author (closest {score:.0%}).\n"
+                f"  Re-run with --new-author to register them, or pass --author with "
+                f"the spelling used in assets/blog/authors.json.")
+        author_new = True
+        info(f"Author: registering new author '{name}'.")
+        registry["authors"].append({
+            "id": slugify(name), "canonical": name, "role": "",
+            "names": {lang: name}, "aliases": [],
+        })
+
+    # ---- manuscript -------------------------------------------------------
+    title, subtitle, body_md = parse_md(md_text, lang, subtitle_from)
+    body = md_to_blocks(body_md, lang)
+    info(f"Title: {title}")
+    info(f"Subtitle: {subtitle or '(none)'}")
+
+    post_slug = slug or slugify(title)
+    page_path = os.path.join(POSTS_DIR, post_slug + ".html")
+    if write and os.path.exists(page_path):
+        raise PublishError(f"{page_path} already exists. Pass a different --slug.")
+
+    # ---- cover ------------------------------------------------------------
+    ext = os.path.splitext(image_path)[1].lower() or ".jpg"
+    cover_rel = f"/assets/blog/{post_slug}-cover{ext}"
+    w, h = image_size(image_path)
+    dims = f' width="{w}" height="{h}"' if w and h else ""
+
+    # ---- assemble ---------------------------------------------------------
+    y, mo, d = (int(x) for x in date.split("-"))
+    date_label = cfg["date"].format(d=d, m=MONTHS[lang][mo - 1], y=y)
+    title_html = esc(title)
+    if highlight:
+        if highlight not in title:
+            raise PublishError(f"--highlight {highlight!r} does not occur in the title.")
+        title_html = esc(title).replace(esc(highlight),
+                                        f"<em>{esc(highlight)}</em>", 1)
+    description = strip_tags(teaser(subtitle, body, 155))
+    published_line = (f"{cfg['published']} {date_label}" if lang != "tr"
+                      else f"{date_label} {cfg['published']}")
+
+    page = PAGE.format(
+        lang=lang, locale=cfg["locale"], site=SITE,
+        title_plain=esc(title), title_html=title_html,
+        subtitle_html=f'\n            <p class="article-subtitle">{esc(subtitle)}</p>' if subtitle else "",
+        description=esc(description).replace('"', "&quot;"),
+        tag_html=f'\n              <span class="article-tag">{esc(tag)}</span>' if tag else "",
+        iso_date=date, date_label=date_label, author=esc(author_display),
+        lang_label=cfg["label"], cover=cover_rel, dims=dims,
+        alt=esc(alt or title).replace('"', "&quot;"),
+        caption_html=f'\n              <figcaption>{esc(caption)}</figcaption>' if caption else "",
+        body=body, by=cfg["by"], published_line=published_line, back=cfg["back"],
+        dir_attr=' dir="rtl"' if cfg["rtl"] else "",
+    )
+
+    # ---- fidelity gate ----------------------------------------------------
+    a, b, diffs = check_fidelity(md_text, page)
+    if diffs:
+        word_diffs = [(tag, a[i1:i2], b[j1:j2]) for tag, i1, i2, j1, j2 in diffs]
+        raise PublishError(
+            "The generated page does not match the manuscript word for word.",
+            diffs=word_diffs)
+    info(f"Fidelity check: {len(a)} words, identical to the manuscript. ✓")
+
+    card = CARD.format(
+        slug=post_slug, lang=lang, cover=cover_rel, dims=dims,
+        alt=esc(alt or title).replace('"', "&quot;"),
+        lang_label=cfg["label"], iso_date=date, date_label=date_label,
+        author=esc(author_display), title_plain=esc(title),
+        excerpt=esc(teaser(subtitle, body)), read_more=cfg["read_more"],
+    )
+
+    files = [
+        os.path.relpath(page_path, ROOT),
+        os.path.relpath(os.path.join(IMG_DIR, f"{post_slug}-cover{ext}"), ROOT),
+        os.path.relpath(INDEX, ROOT),
+    ]
+    if author_new:
+        files.append(os.path.relpath(AUTHORS, ROOT))
+
+    if write:
+        # ---- write ----------------------------------------------------------
+        with open(page_path, "w", encoding="utf-8") as fh:
+            fh.write(page)
+        shutil.copyfile(image_path, os.path.join(IMG_DIR, f"{post_slug}-cover{ext}"))
+
+        index_html = open(INDEX, encoding="utf-8").read()
+        index_html, _ = add_chip(index_html, lang)
+        index_html = add_card(index_html, card)
+        with open(INDEX, "w", encoding="utf-8") as fh:
+            fh.write(index_html)
+
+        if author_new:
+            with open(AUTHORS, "w", encoding="utf-8") as fh:
+                json.dump(registry, fh, ensure_ascii=False, indent=2)
+                fh.write("\n")
+
+    return {
+        "slug": post_slug, "title": title, "subtitle": subtitle,
+        "author": author_display, "author_canonical": author_canonical,
+        "author_score": score, "author_new": author_new,
+        "page_html": page, "card_html": card,
+        "cover_rel": cover_rel, "files": files,
+    }
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -649,121 +789,45 @@ def main():
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
         die("--date must look like 2026-07-20.")
 
-    lang = args.lang
-    cfg = LANGS[lang]
     raw_md = open(args.md, encoding="utf-8").read()
 
-    # ---- author -----------------------------------------------------------
-    registry = load_authors()
-    name = args.author or find_author_in_md(raw_md)
-    if not name:
-        die("No author found. Add a byline like 'Author: Name' to the manuscript, "
-            "or pass --author \"Name\".")
-    entry, score = match_author(name, registry)
-    if entry and not args.new_author:
-        author = entry.get("names", {}).get(lang) or entry["canonical"]
-        info(f"Author: '{name}' → known author {entry['canonical']} "
-             f"(match {score:.0%}), using '{author}' for {lang}.")
-    else:
-        author = name
-        if not args.new_author:
-            die(f"'{name}' does not match any known author (closest {score:.0%}).\n"
-                f"  Re-run with --new-author to register them, or pass --author with "
-                f"the spelling used in assets/blog/authors.json.")
-        info(f"Author: registering new author '{name}'.")
-        registry["authors"].append({
-            "id": slugify(name), "canonical": name, "role": "",
-            "names": {lang: name}, "aliases": [],
-        })
+    # Read before build_post writes, purely to report below whether a new
+    # filter chip was added — mirrors add_chip()'s own check, does not write.
+    chip_existed = None
+    if not args.dry_run and os.path.exists(INDEX):
+        index_before = open(INDEX, encoding="utf-8").read()
+        chip_existed = re.search(rf'class="lang-chip" data-lang="{args.lang}"',
+                                 index_before) is not None
 
-    # ---- manuscript -------------------------------------------------------
-    title, subtitle, body_md = parse_md(args.md, lang, args.subtitle_from)
-    body = md_to_blocks(body_md, lang)
-    info(f"Title: {title}")
-    info(f"Subtitle: {subtitle or '(none)'}")
+    try:
+        r = build_post(raw_md, args.image, args.lang, args.date,
+                       author=args.author, slug=args.slug, tag=args.tag,
+                       highlight=args.highlight, alt=args.alt, caption=args.caption,
+                       subtitle_from=args.subtitle_from, new_author=args.new_author,
+                       write=not args.dry_run)
+    except PublishError as e:
+        if e.diffs:
+            print("\n✗ The generated page does not match the manuscript word for word:")
+            for tag, a_w, b_w in e.diffs[:20]:
+                print(f"    [{tag}] md={' '.join(a_w)!r} page={' '.join(b_w)!r}")
+            die("Nothing was written. Fix the converter or the manuscript and retry.")
+        die(str(e))
 
-    slug = args.slug or slugify(title)
-    page_path = os.path.join(POSTS_DIR, slug + ".html")
-    if os.path.exists(page_path) and not args.dry_run:
-        die(f"{page_path} already exists. Pass a different --slug.")
-
-    # ---- cover ------------------------------------------------------------
     ext = os.path.splitext(args.image)[1].lower() or ".jpg"
-    cover_rel = f"/assets/blog/{slug}-cover{ext}"
-    w, h = image_size(args.image)
-    dims = f' width="{w}" height="{h}"' if w and h else ""
-
-    # ---- assemble ---------------------------------------------------------
-    y, mo, d = (int(x) for x in args.date.split("-"))
-    date_label = cfg["date"].format(d=d, m=MONTHS[lang][mo - 1], y=y)
-    title_html = esc(title)
-    if args.highlight:
-        if args.highlight not in title:
-            die(f"--highlight {args.highlight!r} does not occur in the title.")
-        title_html = esc(title).replace(esc(args.highlight),
-                                        f"<em>{esc(args.highlight)}</em>", 1)
-    description = strip_tags(teaser(subtitle, body, 155))
-    published_line = (f"{cfg['published']} {date_label}" if lang != "tr"
-                      else f"{date_label} {cfg['published']}")
-
-    page = PAGE.format(
-        lang=lang, locale=cfg["locale"], site=SITE,
-        title_plain=esc(title), title_html=title_html,
-        subtitle_html=f'\n            <p class="article-subtitle">{esc(subtitle)}</p>' if subtitle else "",
-        description=esc(description).replace('"', "&quot;"),
-        tag_html=f'\n              <span class="article-tag">{esc(args.tag)}</span>' if args.tag else "",
-        iso_date=args.date, date_label=date_label, author=esc(author),
-        lang_label=cfg["label"], cover=cover_rel, dims=dims,
-        alt=esc(args.alt or title).replace('"', "&quot;"),
-        caption_html=f'\n              <figcaption>{esc(args.caption)}</figcaption>' if args.caption else "",
-        body=body, by=cfg["by"], published_line=published_line, back=cfg["back"],
-        dir_attr=' dir="rtl"' if cfg["rtl"] else "",
-    )
-
-    # ---- fidelity gate ----------------------------------------------------
-    a, b, diffs = check_fidelity(args.md, page)
-    if diffs:
-        print("\n✗ The generated page does not match the manuscript word for word:")
-        for tag, i1, i2, j1, j2 in diffs[:20]:
-            print(f"    [{tag}] md={' '.join(a[i1:i2])!r} page={' '.join(b[j1:j2])!r}")
-        die("Nothing was written. Fix the converter or the manuscript and retry.")
-    info(f"Fidelity check: {len(a)} words, identical to the manuscript. ✓")
-
-    card = CARD.format(
-        slug=slug, lang=lang, cover=cover_rel, dims=dims,
-        alt=esc(args.alt or title).replace('"', "&quot;"),
-        lang_label=cfg["label"], iso_date=args.date, date_label=date_label,
-        author=esc(author), title_plain=esc(title),
-        excerpt=esc(teaser(subtitle, body)), read_more=cfg["read_more"],
-    )
 
     if args.dry_run:
-        print(f"\n[dry run] would write {page_path}")
-        print(f"[dry run] would copy  {args.image} → {IMG_DIR}/{slug}-cover{ext}")
-        print(f"[dry run] would add a {cfg['label']} card to aktuelles/index.html")
+        print(f"\n[dry run] would write {os.path.join(POSTS_DIR, r['slug'] + '.html')}")
+        print(f"[dry run] would copy  {args.image} → {IMG_DIR}/{r['slug']}-cover{ext}")
+        print(f"[dry run] would add a {LANGS[args.lang]['label']} card to aktuelles/index.html")
         return
 
-    # ---- write ------------------------------------------------------------
-    with open(page_path, "w", encoding="utf-8") as fh:
-        fh.write(page)
-    shutil.copyfile(args.image, os.path.join(IMG_DIR, f"{slug}-cover{ext}"))
-
-    index_html = open(INDEX, encoding="utf-8").read()
-    index_html, added = add_chip(index_html, lang)
-    index_html = add_card(index_html, card)
-    with open(INDEX, "w", encoding="utf-8") as fh:
-        fh.write(index_html)
-
-    if args.new_author:
-        with open(AUTHORS, "w", encoding="utf-8") as fh:
-            json.dump(registry, fh, ensure_ascii=False, indent=2)
-            fh.write("\n")
-
-    print(f"\n✓ Published /aktuelles/{slug}")
-    info(f"page   aktuelles/{slug}.html")
-    info(f"cover  assets/blog/{slug}-cover{ext}")
-    info(f"card   added to aktuelles/index.html" + (f" (+ {cfg['label']} filter chip)" if added else ""))
-    print(f"\nPreview:  python3 dev-server.py  →  http://localhost:8000/aktuelles/{slug}\n")
+    added = chip_existed is False
+    print(f"\n✓ Published /aktuelles/{r['slug']}")
+    info(f"page   aktuelles/{r['slug']}.html")
+    info(f"cover  assets/blog/{r['slug']}-cover{ext}")
+    info("card   added to aktuelles/index.html" +
+        (f" (+ {LANGS[args.lang]['label']} filter chip)" if added else ""))
+    print(f"\nPreview:  python3 dev-server.py  →  http://localhost:8000/aktuelles/{r['slug']}\n")
 
 
 if __name__ == "__main__":
