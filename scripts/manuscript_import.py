@@ -40,8 +40,13 @@ class _MDBuilder(html.parser.HTMLParser):
         self.seen_h1 = False
         self.list_items = []      # collected '- ' items
         self.quote_paras = []     # collected '> ' paragraphs
-        self.in_li = False
-        self.in_quote = False
+        # Depth counters (not booleans): nested <li>/<ul> or nested
+        # <blockquote> must not have an inner close reset state that the
+        # outer element still relies on.
+        self.li_depth = 0
+        self.quote_depth = 0
+        self.list_depth = 0       # nested <ul>/<ol>: flush list_items only
+                                   # when the outermost one closes
         self.heading = None       # '#'/'##'/'###' while inside h1..h6
         self.href = None
         self.link_text = []
@@ -51,10 +56,22 @@ class _MDBuilder(html.parser.HTMLParser):
 
     # ---- inline text -----------------------------------------------------
     def _emit(self, s):
+        # Being inside <a> takes priority over being inside a table cell,
+        # so link text is captured for markdown-link assembly even when
+        # the link lives inside a <td>/<th>.
+        if self.href is not None:
+            self.link_text.append(s)
+        elif self.cell is not None:
+            self.cell.append(s)
+        else:
+            self.inline.append(s)
+
+    def _append_finalized(self, s):
+        """Append already-finalized text (e.g. an assembled markdown link)
+        to whatever the current text target is: a table cell if we're
+        inside one, otherwise the current block's inline buffer."""
         if self.cell is not None:
             self.cell.append(s)
-        elif self.href is not None:
-            self.link_text.append(s)
         else:
             self.inline.append(s)
 
@@ -72,10 +89,14 @@ class _MDBuilder(html.parser.HTMLParser):
             return
         if self.heading:
             self.blocks.append(f"{self.heading} {text}")
-        elif self.in_li:
-            self.list_items.append(f"- {text}")
-        elif self.in_quote:
+        elif self.quote_depth > 0:
+            # A list item inside a blockquote must not get a leading
+            # dash: publish_post's pull-quote parser treats a leading
+            # dash line as an attribution, which would restructure the
+            # manuscript's wording.
             self.quote_paras.append(f"> {text}")
+        elif self.li_depth > 0:
+            self.list_items.append(f"- {text}")
         else:
             self.blocks.append(text)
 
@@ -91,15 +112,22 @@ class _MDBuilder(html.parser.HTMLParser):
             else:
                 self.heading = "###"
         elif tag == "p":
-            self._close_block()
+            if self.cell is not None:
+                # Multiple <p>s inside one cell must not fuse into a
+                # single run-on word; the whitespace collapse at
+                # </td>/</th> squeezes this down to one space.
+                self.cell.append(" ")
+            else:
+                self._close_block()
         elif tag in ("ul", "ol"):
             self._close_block()
+            self.list_depth += 1
         elif tag == "li":
             self._close_block()
-            self.in_li = True
+            self.li_depth += 1
         elif tag == "blockquote":
             self._close_block()
-            self.in_quote = True
+            self.quote_depth += 1
         elif tag in ("strong", "b"):
             self._emit("**")
         elif tag in ("em", "i"):
@@ -127,17 +155,21 @@ class _MDBuilder(html.parser.HTMLParser):
         elif tag == "p":
             self._close_block()
         elif tag == "li":
+            # Close while li_depth still reflects being inside this <li>
+            # (a nested list closing early must not evict trailing text
+            # from the still-open outer <li>).
             self._close_block()
-            self.in_li = False
+            self.li_depth -= 1
         elif tag in ("ul", "ol"):
             self._close_block()
-            if self.list_items:
+            self.list_depth -= 1
+            if self.list_depth == 0 and self.list_items:
                 self.blocks.append("\n".join(self.list_items))
                 self.list_items = []
         elif tag == "blockquote":
             self._close_block()
-            self.in_quote = False
-            if self.quote_paras:
+            self.quote_depth -= 1
+            if self.quote_depth == 0 and self.quote_paras:
                 self.blocks.append("\n".join(self.quote_paras))
                 self.quote_paras = []
         elif tag in ("strong", "b"):
@@ -148,9 +180,9 @@ class _MDBuilder(html.parser.HTMLParser):
             text = re.sub(r"\s+", " ", "".join(self.link_text)).strip()
             href, self.href = self.href, None
             if text and href:
-                self.inline.append(f"[{text}]({href})")
+                self._append_finalized(f"[{text}]({href})")
             elif text:
-                self.inline.append(text)
+                self._append_finalized(text)
         elif tag in ("td", "th"):
             self.row.append(re.sub(r"\s+", " ", "".join(self.cell)).strip())
             self.cell = None
@@ -231,8 +263,14 @@ def _doc_to_docx(data):
         dst = os.path.join(tmp, "out.docx")
         with open(src, "wb") as fh:
             fh.write(data)
-        r = subprocess.run(["textutil", "-convert", "docx", src, "-output", dst],
-                           capture_output=True, text=True)
+        try:
+            r = subprocess.run(["textutil", "-convert", "docx", src, "-output", dst],
+                               capture_output=True, text=True)
+        except FileNotFoundError:
+            raise ManuscriptError(
+                "Die Konvertierung von .doc-Dateien erfordert macOS (textutil ist "
+                "nicht verfügbar). Bitte die Datei als .docx speichern und erneut "
+                "versuchen.")
         if r.returncode != 0 or not os.path.exists(dst):
             raise ManuscriptError(
                 "Die .doc-Datei konnte nicht konvertiert werden (textutil). "
