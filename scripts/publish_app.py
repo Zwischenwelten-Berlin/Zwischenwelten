@@ -108,6 +108,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.api_publish()
             elif self.path == "/api/retry-push":
                 self.api_retry_push()
+            elif self.path == "/api/author-check":
+                self.api_author_check(body)
             else:
                 self.send_error(404)
         except (ManuscriptError, PublishError) as e:
@@ -150,6 +152,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             "langs": {code: cfg["label"] for code, cfg in LANGS.items()},
         })
 
+    def api_author_check(self, body):
+        # Read-only lookup the UI calls as the editor types/leaves the author
+        # field — reuses the same fuzzy matcher build_post uses, so the app
+        # never shows a "new author" prompt for someone already on file.
+        name = (body.get("name") or "").strip()
+        if not name:
+            self.send_json({"ok": True, "known": False, "canonical": None, "score": 0.0})
+            return
+        entry, score = publish_post.match_author(name, publish_post.load_authors())
+        self.send_json({"ok": True, "known": bool(entry),
+                        "canonical": entry["canonical"] if entry else None,
+                        "score": round(score, 2)})
+
     def api_preview(self, body):
         kwargs = dict(
             md_text=body["markdown"], image_path=SESSION["cover_path"],
@@ -161,6 +176,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         )
         if not SESSION["cover_path"]:
             raise PublishError("Kein Cover hochgeladen — bitte von vorn beginnen.")
+        if kwargs["new_author"]:
+            # Belt-and-suspenders against a duplicate authors.json entry: the
+            # CLI trusts --new-author, but the app double-checks here because
+            # its checkbox can be ticked from a stale/heuristic UI state. A
+            # known match always wins over "register as new".
+            name = kwargs["author"] or publish_post.find_author_in_md(kwargs["md_text"])
+            if name:
+                entry, _ = publish_post.match_author(name, publish_post.load_authors())
+                if entry:
+                    self.send_json({"ok": False, "error":
+                        f"'{name}' ist bereits als '{entry['canonical']}' registriert — bitte "
+                        f"Häkchen entfernen; veröffentlicht wird unter dem registrierten Namen."})
+                    return
         try:
             r = build_post(**kwargs, write=False)
         except PublishError as e:

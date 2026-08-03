@@ -623,25 +623,51 @@ async function doConvert() {
 }
 
 // ---- screen 2: form -----------------------------------------------------
-function renderAuthorStatus() {
+// Author status is resolved server-side via /api/author-check, which reuses
+// the same fuzzy matcher (diacritics/Cyrillic-aware, aliases + per-language
+// names) that build_post uses — an exact-string client heuristic would flag
+// a merely reformatted known name as "unknown" and risk a duplicate
+// authors.json entry once "new author" is ticked.
+let authorCheckToken = 0;
+let authorCheckTimer = null;
+
+function scheduleAuthorCheck() {
+  clearTimeout(authorCheckTimer);
+  authorCheckTimer = setTimeout(renderAuthorStatus, 400);
+}
+
+async function renderAuthorStatus() {
   const val = document.getElementById("f-author").value.trim();
   const okEl = document.getElementById("author-ok");
   const warnEl = document.getElementById("author-warn");
   const warnText = document.getElementById("author-warn-text");
-  const original = state.convert && state.convert.author;
-  const matchesOriginal = original && original.name && val === original.name.trim();
+  const cb = document.getElementById("f-new-author");
 
-  if (matchesOriginal && original.known) {
+  if (!val) {
+    okEl.hidden = true;
+    warnEl.hidden = false;
+    warnText.textContent = "Keine Autor:in im Manuskript gefunden — bitte eintragen.";
+    return;
+  }
+
+  const myToken = ++authorCheckToken;
+  let r;
+  try {
+    r = await api("/api/author-check", { name: val, lang: document.getElementById("f-lang").value });
+  } catch (e) {
+    return; // network hiccup: leave whatever status was showing
+  }
+  if (myToken !== authorCheckToken) return; // superseded by a newer keystroke/blur
+
+  if (r.ok && r.known) {
     okEl.hidden = false;
-    okEl.textContent = "✓ erkannt als " + original.canonical;
+    okEl.textContent = "✓ erkannt als " + r.canonical;
     warnEl.hidden = true;
-    document.getElementById("f-new-author").checked = false;
+    cb.checked = false;
   } else {
     okEl.hidden = true;
     warnEl.hidden = false;
-    warnText.textContent = val
-      ? "Unbekannte Autor:in — „" + val + "“ ist in der Autor:innen-Liste nicht bekannt."
-      : "Keine Autor:in im Manuskript gefunden — bitte eintragen.";
+    warnText.textContent = "Unbekannte Autor:in — „" + val + "“ ist in der Autor:innen-Liste nicht bekannt.";
   }
 }
 
@@ -868,7 +894,8 @@ document.getElementById("btn-back-to-form").addEventListener("click", () => {
 });
 document.getElementById("btn-publish").addEventListener("click", doPublish);
 document.getElementById("btn-retry-push").addEventListener("click", doRetryPush);
-document.getElementById("f-author").addEventListener("input", renderAuthorStatus);
+document.getElementById("f-author").addEventListener("input", scheduleAuthorCheck);
+document.getElementById("f-author").addEventListener("blur", renderAuthorStatus);
 
 document.getElementById("btn-restart").addEventListener("click", (e) => {
   e.preventDefault();
