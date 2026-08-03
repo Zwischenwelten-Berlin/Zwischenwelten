@@ -78,6 +78,14 @@ disable the check.** A post that differs from its source is a defect, not a styl
 Design elements from older posts (prize podiums, callout boxes) were hand-built. Do not
 recreate them by hand for new posts: a list in the manuscript becomes a list.
 
+## Browser-App
+
+`python3 scripts/publish_app.py` opens a self-service GUI at `http://localhost:8765`
+for editors who prefer dropping a manuscript and cover in a browser over the CLI. It
+runs through the same `manuscript_import`/`publish_post.build_post` converter and
+fidelity gate described above, so it can never produce a different result than this
+skill.
+
 ## Common mistakes
 
 | Mistake | What to do instead |
