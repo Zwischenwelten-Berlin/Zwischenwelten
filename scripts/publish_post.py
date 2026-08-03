@@ -625,7 +625,7 @@ def add_chip(index_html, lang):
 def add_card(index_html, card):
     anchor = '<div class="posts-grid" id="posts-grid">\n'
     if anchor not in index_html:
-        die("Could not find the post grid in aktuelles/index.html.")
+        raise PublishError("Could not find the post grid in aktuelles/index.html.")
     return index_html.replace(anchor, anchor + "\n" + card, 1)
 
 
@@ -738,6 +738,7 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
     if author_new:
         files.append(os.path.relpath(AUTHORS, ROOT))
 
+    chip_added = False
     if write:
         # ---- write ----------------------------------------------------------
         with open(page_path, "w", encoding="utf-8") as fh:
@@ -745,7 +746,7 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         shutil.copyfile(image_path, os.path.join(IMG_DIR, f"{post_slug}-cover{ext}"))
 
         index_html = open(INDEX, encoding="utf-8").read()
-        index_html, _ = add_chip(index_html, lang)
+        index_html, chip_added = add_chip(index_html, lang)
         index_html = add_card(index_html, card)
         with open(INDEX, "w", encoding="utf-8") as fh:
             fh.write(index_html)
@@ -761,6 +762,7 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         "author_score": score, "author_new": author_new,
         "page_html": page, "card_html": card,
         "cover_rel": cover_rel, "files": files,
+        "chip_added": chip_added,
     }
 
 
@@ -791,14 +793,6 @@ def main():
 
     raw_md = open(args.md, encoding="utf-8").read()
 
-    # Read before build_post writes, purely to report below whether a new
-    # filter chip was added — mirrors add_chip()'s own check, does not write.
-    chip_existed = None
-    if not args.dry_run and os.path.exists(INDEX):
-        index_before = open(INDEX, encoding="utf-8").read()
-        chip_existed = re.search(rf'class="lang-chip" data-lang="{args.lang}"',
-                                 index_before) is not None
-
     try:
         r = build_post(raw_md, args.image, args.lang, args.date,
                        author=args.author, slug=args.slug, tag=args.tag,
@@ -821,12 +815,11 @@ def main():
         print(f"[dry run] would add a {LANGS[args.lang]['label']} card to aktuelles/index.html")
         return
 
-    added = chip_existed is False
     print(f"\n✓ Published /aktuelles/{r['slug']}")
     info(f"page   aktuelles/{r['slug']}.html")
     info(f"cover  assets/blog/{r['slug']}-cover{ext}")
     info("card   added to aktuelles/index.html" +
-        (f" (+ {LANGS[args.lang]['label']} filter chip)" if added else ""))
+        (f" (+ {LANGS[args.lang]['label']} filter chip)" if r["chip_added"] else ""))
     print(f"\nPreview:  python3 dev-server.py  →  http://localhost:8000/aktuelles/{r['slug']}\n")
 
 
