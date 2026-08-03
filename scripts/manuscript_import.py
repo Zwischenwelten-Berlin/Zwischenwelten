@@ -305,12 +305,31 @@ def _doc_to_docx(data):
             return fh.read()
 
 
+def _strip_frontmatter(md):
+    """Remove a leading YAML frontmatter block (--- ... ---) if present.
+
+    Frontmatter is metadata, not body copy: its words never appear on the
+    rendered page, so leaving it in would fail the fidelity gate. Only a
+    block that actually looks like YAML mappings is stripped — a document
+    that merely opens with a thematic break stays untouched.
+    """
+    m = re.match(r"\A---[ \t]*\n(.*?)\n(?:---|\.\.\.)[ \t]*\n", md, re.S)
+    if not m:
+        return md, []
+    keys = re.findall(r"^([A-Za-z_][\w-]*):", m.group(1), re.M)
+    if not keys:
+        return md, []
+    warning = ("YAML-Frontmatter wurde entfernt (Felder: " + ", ".join(keys) +
+               ") — diese Angaben bitte im Formular setzen.")
+    return md[m.end():].lstrip("\n"), [warning]
+
+
 def load_manuscript(filename, data):
     """(filename, bytes) -> (markdown, warnings). Raises ManuscriptError."""
     ext = os.path.splitext(filename)[1].lower()
     if ext == ".md":
         try:
-            return data.decode("utf-8"), []
+            return _strip_frontmatter(data.decode("utf-8"))
         except UnicodeDecodeError:
             raise ManuscriptError("Die .md-Datei ist nicht UTF-8-kodiert.")
     if ext not in (".doc", ".docx"):

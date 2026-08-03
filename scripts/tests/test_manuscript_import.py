@@ -167,3 +167,33 @@ def test_list_items_inside_table_cell_separated():
     md, _ = html_to_md(
         "<table><tr><td><ul><li>A</li><li>B</li></ul></td></tr></table>")
     assert md == "| A B |\n| --- |"
+
+
+# ---- YAML frontmatter ----------------------------------------------------
+
+from manuscript_import import load_manuscript
+
+def test_md_frontmatter_stripped_with_warning():
+    md = (b"---\n"
+          b'title: "Ein Titel"\n'
+          b"date: 2026-08-03\n"
+          b"tags:\n  - Berlin\n  - Medien\n"
+          b"---\n\n"
+          b"# Ein Titel\n\nEchter Text.\n")
+    out, warnings = load_manuscript("post.md", md)
+    assert out.startswith("# Ein Titel")
+    assert "Echter Text." in out
+    assert "title:" not in out and "tags:" not in out
+    assert any("Frontmatter" in w for w in warnings)
+    assert any("title" in w and "date" in w and "tags" in w for w in warnings)
+
+def test_md_leading_thematic_break_not_treated_as_frontmatter():
+    md = b"---\n\nKein YAML, nur eine Linie.\n\n---\n\nMehr Text.\n"
+    out, warnings = load_manuscript("post.md", md)
+    assert out == "---\n\nKein YAML, nur eine Linie.\n\n---\n\nMehr Text.\n"
+    assert warnings == []
+
+def test_md_without_frontmatter_unchanged():
+    out, warnings = load_manuscript("post.md", b"# Titel\n\nText.\n")
+    assert out == "# Titel\n\nText.\n"
+    assert warnings == []
