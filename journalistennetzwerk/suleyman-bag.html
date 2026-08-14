@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Süleyman Bağ – ZWISCHENWELTEN</title>
+  <meta name="description" content="Süleyman Bağ ist Journalist, Coach und Projektleiter von ZWISCHENWELTEN – Die Stimme der Vielfalt. Porträt, Werdegang und seine Beiträge auf ZWISCHENWELTEN.">
+  <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#123f7a">
+  <meta name="color-scheme" content="light">
+
+  <link rel="icon" href="/favicon.ico">
+
+  <link rel="stylesheet" href="/assets/fonts.css">
+  <link rel="stylesheet" href="/assets/consent.css">
+
+  <link rel="stylesheet" href="/assets/site.css">
+
+  <style>
+    /* ---------- AUTHOR HEADER ---------- */
+    .author-header{
+      display:grid;
+      grid-template-columns:220px 1fr;
+      gap:32px;
+      align-items:start;
+    }
+
+    .author-photo{
+      width:220px;
+      aspect-ratio:1 / 1;
+      border-radius:18px;
+      overflow:hidden;
+      border:1px solid var(--line-strong);
+      background:#faf5ec;
+    }
+
+    .author-photo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      /* The source is a wide TV still; zoom in on the speaker. */
+      transform:scale(2.6);
+      transform-origin:43% 30%;
+    }
+
+    .author-name{
+      margin:0 0 4px;
+      font-size:clamp(26px, 4vw, 36px);
+      line-height:1.15;
+      letter-spacing:-0.02em;
+      font-weight:800;
+      color:var(--text);
+    }
+
+    .author-role{
+      margin:0 0 16px;
+      font-size:12px;
+      letter-spacing:0.14em;
+      text-transform:uppercase;
+      font-weight:600;
+      color:var(--text-soft);
+    }
+
+    /* Bio clamp: shows "… mehr" only when the text overflows */
+    .author-bio p{
+      margin:0;
+      font-size:15px;
+      line-height:1.7;
+      color:#4f5964;
+    }
+
+    .author-bio.is-clamped p{
+      display:-webkit-box;
+      -webkit-line-clamp:5;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+
+    .bio-toggle{
+      display:none;
+      margin-top:10px;
+      background:none;
+      border:none;
+      padding:0 0 2px;
+      font:inherit;
+      font-size:13px;
+      font-weight:600;
+      color:var(--text);
+      border-bottom:1px solid var(--text);
+      cursor:pointer;
+    }
+
+    .bio-toggle.is-visible{ display:inline-block; }
+
+    /* ---------- ARTICLE LIST ---------- */
+    .posts-grid{
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:22px;
+    }
+
+    .post-card{
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      background:var(--white);
+      border:1px solid var(--line-strong);
+      border-radius:18px;
+      overflow:hidden;
+      color:var(--text);
+      transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+      isolation:isolate;
+    }
+
+    .post-card:hover,
+    .post-card:focus-visible{
+      transform:translateY(-3px);
+      box-shadow:0 22px 44px rgba(18,63,122,0.12);
+      border-color:rgba(18,63,122,0.22);
+      outline:none;
+    }
+
+    .post-thumb{
+      position:relative;
+      aspect-ratio:16 / 10;
+      overflow:hidden;
+      background:#faf5ec;
+      border-bottom:1px solid var(--line);
+    }
+
+    .post-thumb img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      transition:transform .5s ease;
+    }
+
+    .post-card:hover .post-thumb img{ transform:scale(1.04); }
+
+    .post-info{
+      padding:20px 22px 22px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      flex:1;
+    }
+
+    .post-meta{
+      font-size:11px;
+      letter-spacing:0.14em;
+      text-transform:uppercase;
+      font-weight:600;
+      color:var(--text-soft);
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+
+    .post-meta .sep{ color:var(--accent); }
+
+    .post-title{
+      margin:0;
+      font-size:21px;
+      line-height:1.25;
+      letter-spacing:-0.02em;
+      font-weight:700;
+      color:var(--text);
+    }
+
+    .post-excerpt{
+      margin:0;
+      font-size:13.5px;
+      line-height:1.6;
+      color:#4f5964;
+    }
+
+    .post-cta{
+      margin-top:auto;
+      align-self:flex-start;
+      font-size:13px;
+      font-weight:600;
+      color:var(--text);
+      padding-top:8px;
+      padding-bottom:2px;
+      border-bottom:1px solid var(--text);
+      transition:transform .2s ease;
+    }
+
+    .post-card:hover .post-cta{ transform:translateX(3px); }
+
+    @media (max-width: 860px){
+      .author-header{ grid-template-columns:1fr; }
+      .author-photo{ width:160px; }
+      .posts-grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Zum Inhalt springen</a>
+
+  <div class="site-shell">
+    <header class="top-nav" aria-label="Kopfbereich">
+      <div class="container top-nav-inner">
+        <a href="/" class="brand" aria-label="ZWISCHENWELTEN Startseite">
+          <img src="/ZW_logo.png" alt="ZWISCHENWELTEN">
+        </a>
+
+        <nav aria-label="Hauptnavigation">
+          <ul class="nav-links">
+            <li><a href="/aktuelles">Aktuelles</a></li>
+            <li><a href="/ueber-uns">Über uns</a></li>
+            <li><a href="/journalistennetzwerk" class="is-current" aria-current="page">Journalistennetzwerk</a></li>
+            <li><a href="/buergerredaktion">Bürgerredaktion</a></li>
+            <li><a href="/medialog">Medialog</a></li>
+            <li><a href="/medienpreis">Medienpreis</a></li>
+            <li><a href="/mitmachen">Mach mit!</a></li>
+          </ul>
+        </nav>
+
+        <div class="nav-actions">
+          <a href="/kontakt" class="pill-btn">Kontakt</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+
+      <!-- AUTOR -->
+      <section class="section" aria-labelledby="author-name" style="padding-top:44px">
+        <div class="container">
+          <div class="prose-card">
+            <div class="author-header">
+              <div class="author-photo">
+                <img src="/assets/autoren/suleyman-bag.png" alt="Süleyman Bağ">
+              </div>
+              <div>
+                <p class="author-role">Journalistennetzwerk · Autor</p>
+                <h1 class="author-name" id="author-name">Süleyman Bağ</h1>
+                <p class="author-role">Journalist, Coach &amp; Projektleiter ZWISCHENWELTEN</p>
+                <div class="author-bio is-clamped" id="author-bio">
+                  <p>Süleyman Bağ ist Journalist, Coach und Projektleiter des Medienprojekts „Zwischenwelten – Die Stimme der Vielfalt“. Seit mehr als 25 Jahren berichtet und analysiert er zu den Themen Migration, Religion, gesellschaftliche Teilhabe und interkultureller Dialog. Sein Anliegen ist ein Journalismus, der Orientierung gibt, unterschiedliche Perspektiven sichtbar macht und den gesellschaftlichen Zusammenhalt stärkt. Bei ZWISCHENWELTEN verantwortet er die Projektleitung und schreibt regelmäßig eigene Beiträge – über Berlin, seine Zwischenräume und die Menschen, die diese Stadt prägen.</p>
+                </div>
+                <button type="button" class="bio-toggle" id="bio-toggle" aria-expanded="false" aria-controls="author-bio">… mehr</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BEITRÄGE -->
+      <section class="section" aria-labelledby="beitraege">
+        <div class="container">
+          <div class="section-head">
+            <p class="section-eyebrow">Beiträge</p>
+            <h2 class="section-title" id="beitraege">Beiträge auf ZWISCHENWELTEN</h2>
+          </div>
+
+          <div class="posts-grid">
+
+            <a class="post-card" href="/aktuelles/wem-gehort-berlin">
+              <div class="post-thumb">
+                <img src="/assets/blog/wem-gehort-berlin-cover.png" alt="Wem gehört Berlin?" loading="lazy" width="1536" height="1024">
+              </div>
+              <div class="post-info">
+                <p class="post-meta">
+                  <time datetime="2026-08-10">10. August 2026</time>
+                </p>
+                <h3 class="post-title">Wem gehört Berlin?</h3>
+                <p class="post-excerpt">Der Kampf um bezahlbares Wohnen und das Versprechen der Politik – von einer Erfolgsgeschichte zu einer sozialen Belastung.</p>
+                <span class="post-cta">Weiterlesen →</span>
+              </div>
+            </a>
+
+            <a class="post-card" href="/aktuelles/medienpreis-2026">
+              <div class="post-thumb">
+                <img src="/assets/blog/medienpreis-2026-cover.jpg" alt="Plakat des Zwischenwelten Medienpreis 2026" loading="lazy" width="1280" height="905">
+              </div>
+              <div class="post-info">
+                <p class="post-meta">
+                  <time datetime="2026-07-16">16. Juli 2026</time>
+                </p>
+                <h3 class="post-title">Erster Zwischenwelten Medienpreis startet</h3>
+                <p class="post-excerpt">Auszeichnung für Journalismus in der postmigrantischen Gesellschaft: Der Zwischenwelten Medienpreis 2026 wird erstmals ausgelobt.</p>
+                <span class="post-cta">Weiterlesen →</span>
+              </div>
+            </a>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer" aria-label="Fußbereich">
+      <div class="container">
+        <div class="partners" aria-label="Projektpartner">
+          <span class="partners-label">Unterstützt durch</span>
+          <div class="partners-logos">
+            <a href="https://www.berlin.de/" class="partner-logo" target="_blank" rel="noopener" aria-label="Land Berlin">
+              <img src="/berlin_logo.png" alt="Land Berlin">
+            </a>
+            <a href="https://www.degewo.de/" class="partner-logo" target="_blank" rel="noopener" aria-label="degewo">
+              <img src="/Degewo_Logo.svg.png" alt="degewo">
+            </a>
+          </div>
+        </div>
+
+        <div class="footer-inner">
+          <div>ZWISCHENWELTEN · Berlin · Bürgerredaktion · Journalistennetzwerk · Medienwettbewerb 2026</div>
+          <div class="footer-links">
+            <a href="/ueber-uns">Über uns</a>
+            <a href="/kontakt">Kontakt</a>
+            <a href="/impressum">Impressum</a>
+            <a href="/datenschutz">Datenschutz</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    (function(){
+      var bio = document.getElementById('author-bio');
+      var toggle = document.getElementById('bio-toggle');
+      var p = bio.querySelector('p');
+      // Show the toggle only if the clamped text actually overflows.
+      if (p.scrollHeight > p.clientHeight + 2) {
+        toggle.classList.add('is-visible');
+      }
+      toggle.addEventListener('click', function(){
+        var clamped = bio.classList.toggle('is-clamped');
+        toggle.textContent = clamped ? '… mehr' : 'weniger';
+        toggle.setAttribute('aria-expanded', String(!clamped));
+      });
+    })();
+  </script>
+  <script src="/assets/consent.js" defer></script>
+</body>
+</html>
