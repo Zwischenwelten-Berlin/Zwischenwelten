@@ -75,6 +75,18 @@
   }
   #steps li.is-active{ color:var(--accent); border-color:var(--accent); }
   #steps li.is-done{ color:var(--accent); border-color:rgba(18,63,122,0.35); }
+  #steps[hidden]{ display:none; }
+
+  /* ---------- post list ---------- */
+  .post-row{ display:flex; gap:14px; align-items:center; padding:12px 0;
+             border-bottom:1px solid var(--line, #e5e7ee); }
+  .post-row img{ width:72px; height:48px; object-fit:cover; border-radius:8px; }
+  .post-row .grow{ flex:1; min-width:0; }
+  .post-row .title{ font-weight:600; }
+  .post-row .meta{ color:#667; font-size:13px; }
+  .post-row.is-translation{ margin-left:56px; }
+  .post-row .badge{ font-size:12px; border:1px solid currentColor;
+                    border-radius:999px; padding:1px 8px; }
 
   /* ---------- card ---------- */
   .card{
@@ -337,6 +349,35 @@
     <li data-step="screen-result">4 Fertig</li>
   </ol>
 
+  <!-- SCREEN 0: HOME -->
+  <section id="screen-home">
+    <div class="card">
+      <div class="dropzones">
+        <div class="dropzone" id="btn-home-new" tabindex="0" role="button">
+          <div class="zone-icon" aria-hidden="true">✍️</div>
+          <div class="zone-label">Neuer Beitrag</div>
+          <div class="zone-hint">Manuskript &amp; Titelbild hochladen</div>
+        </div>
+        <div class="dropzone" id="btn-home-manage" tabindex="0" role="button">
+          <div class="zone-icon" aria-hidden="true">🗂️</div>
+          <div class="zone-label">Beiträge verwalten</div>
+          <div class="zone-hint">Bearbeiten · Übersetzung hinzufügen</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 0b: LIST -->
+  <section id="screen-list" hidden>
+    <div class="card">
+      <div id="list-error" class="banner banner-error" hidden></div>
+      <div id="list-body"></div>
+      <div class="actions actions-split">
+        <a href="#" id="btn-list-back" class="link-muted">← Zurück</a>
+      </div>
+    </div>
+  </section>
+
   <!-- SCREEN 1: DROP -->
   <section id="screen-drop">
     <div class="card">
@@ -511,7 +552,7 @@
 </main>
 
 <script>
-const state = { manuscript: null, cover: null, convert: null, preview: null };
+const state = { mode: "new", manuscript: null, cover: null, convert: null, preview: null };
 let previewFresh = false;      // gates the publish button
 let publishPending = false;
 let convertPending = false;
@@ -544,10 +585,27 @@ function updateSteps(activeId) {
   });
 }
 
+const MODE_TITLES = {
+  new: "Neuer Blogpost",
+  edit: "Beitrag bearbeiten",
+  translate: "Übersetzung hinzufügen",
+};
+
 function show(id) {
   for (const s of document.querySelectorAll("main > section")) s.hidden = true;
   document.getElementById(id).hidden = false;
-  updateSteps(id);
+
+  const isWizard = STEP_ORDER.includes(id);
+  document.getElementById("steps").hidden = !isWizard;
+
+  const h1 = document.querySelector("h1");
+  if (id === "screen-home" || id === "screen-list") {
+    h1.textContent = "Blog verwalten";
+  } else if (isWizard) {
+    h1.textContent = MODE_TITLES[state.mode] || MODE_TITLES.new;
+  }
+
+  if (isWizard) updateSteps(id);
 }
 
 function showError(screenId, message) {
@@ -882,9 +940,106 @@ function renderResult(r) {
   }
 }
 
+// ---- screen 0/0b: home + post list ----------------------------------------
+function escHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+async function loadList() {
+  const errEl = document.getElementById("list-error");
+  const body = document.getElementById("list-body");
+  errEl.hidden = true;
+  errEl.textContent = "";
+  body.innerHTML = "";
+
+  let r;
+  try {
+    const res = await fetch("/api/posts");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    r = await res.json();
+  } catch (e) {
+    errEl.textContent = "Beiträge konnten nicht geladen werden: " + (e && e.message ? e.message : e);
+    errEl.hidden = false;
+    return;
+  }
+
+  if (!r.ok) {
+    errEl.textContent = r.error || "Beiträge konnten nicht geladen werden.";
+    errEl.hidden = false;
+    return;
+  }
+
+  for (const p of r.posts) {
+    body.appendChild(postRow(p, false));
+    for (const t of p.translations) body.appendChild(postRow(t, true));
+  }
+}
+
+function postRow(p, isTranslation) {
+  const row = document.createElement("div");
+  row.className = "post-row" + (isTranslation ? " is-translation" : "");
+  const locked = p.locked;
+  row.innerHTML = `
+    ${p.cover ? `<img src="${escHtml(p.cover)}" alt="">` : ""}
+    <div class="grow">
+      <div class="title">${escHtml(p.title)}</div>
+      <div class="meta">${escHtml(p.date)} · ${escHtml(p.author)} · <span class="badge">${escHtml(p.lang)}</span>
+        ${locked ? " · 🔒 gesperrt" : ""}</div>
+    </div>
+    ${locked ? "" : `<button class="btn btn-secondary" data-action="edit"
+        data-slug="${escHtml(p.slug)}">Bearbeiten</button>`}
+    ${isTranslation ? "" : `<button class="btn btn-secondary" data-action="translate"
+        data-slug="${escHtml(p.slug)}">Übersetzung +</button>`}`;
+  return row;
+}
+
+function onActivate(el, handler) {
+  el.addEventListener("click", handler);
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handler(e); }
+  });
+}
+
+// Undo the drop-screen's file selection so re-entering "Neuer Beitrag" after
+// a publish (which no longer reloads the page) starts clean, same as before.
+function resetDropScreen() {
+  state.manuscript = null;
+  state.cover = null;
+  for (const [zoneId, nameId] of [
+    ["zone-manuscript", "name-manuscript"],
+    ["zone-cover", "name-cover"],
+  ]) {
+    document.getElementById(zoneId).classList.remove("has-file");
+    document.getElementById(nameId).textContent = "";
+  }
+  document.getElementById("drop-error").hidden = true;
+  updateContinueButton();
+}
+
 // ---- wiring ---------------------------------------------------------------
 setupDropzone("zone-manuscript", "input-manuscript", "name-manuscript", "manuscript");
 setupDropzone("zone-cover", "input-cover", "name-cover", "cover");
+
+onActivate(document.getElementById("btn-home-new"), () => {
+  state.mode = "new";
+  resetDropScreen();
+  show("screen-drop");
+});
+onActivate(document.getElementById("btn-home-manage"), () => {
+  show("screen-list");
+  loadList();
+});
+document.getElementById("btn-list-back").addEventListener("click", (e) => {
+  e.preventDefault();
+  show("screen-home");
+});
+document.getElementById("list-body").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  console.log(btn.dataset.action, btn.dataset.slug);
+});
 
 document.getElementById("btn-continue").addEventListener("click", doConvert);
 document.getElementById("btn-preview").addEventListener("click", doPreview);
@@ -903,11 +1058,11 @@ document.getElementById("btn-restart").addEventListener("click", (e) => {
 });
 document.getElementById("btn-new-post").addEventListener("click", (e) => {
   e.preventDefault();
-  location.reload();
+  show("screen-home");
 });
 
 document.getElementById("f-date").value = new Date().toISOString().slice(0, 10);
-show("screen-drop");
+show("screen-home");
 </script>
 </body>
 </html>
