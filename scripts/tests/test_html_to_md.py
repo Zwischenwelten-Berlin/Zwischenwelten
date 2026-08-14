@@ -80,6 +80,31 @@ def test_no_tag_no_caption():
     assert r["tag"] is None and r["highlight"] is None and r["caption"] is None
 
 
+AMP_MD = """# Kunst & Kultur
+
+*Stimmen & Perspektiven*
+
+Author: A & B
+
+Ein Absatz mit einem & Zeichen.
+"""
+
+
+def test_metadata_with_ampersand_round_trips():
+    first = build_page(
+        md=AMP_MD, tag="Tag & Co", highlight=None,
+        alt="Alt & Text", caption="Bild & Text", new_author=True)
+    r = html_to_md.page_to_md(first["page_html"])
+    assert r["title"] == "Kunst & Kultur"
+    assert r["subtitle"] == "Stimmen & Perspektiven"
+    assert r["author"] == "A & B"
+    assert r["tag"] == "Tag & Co"
+    assert r["alt"] == "Alt & Text"
+    assert r["caption"] == "Bild & Text"
+    _, _, diffs = publish_post.check_fidelity(r["md"], first["page_html"])
+    assert diffs == []
+
+
 def test_fragment_to_md_headings_and_bold():
     md = html_to_md.fragment_to_md(
         "<h1>Titel</h1><p><em>Unter</em></p><h2>Kapitel</h2>"

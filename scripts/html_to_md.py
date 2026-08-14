@@ -5,6 +5,7 @@ Only ever needs to understand markup that publish_post.build_post emits.
 Used by the backfill CLI and the app's rich-text endpoints.
 """
 
+import html
 import re
 
 from manuscript_import import _MDBuilder
@@ -69,7 +70,9 @@ def _first(pattern, html, flags=re.S):
 
 
 def _text(s):
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", s)).strip() if s else None
+    if not s:
+        return None
+    return html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", s)).strip())
 
 
 def page_to_md(page_html):
@@ -85,6 +88,7 @@ def page_to_md(page_html):
         r'<p class="article-author">[^<]*<strong>(.*?)</strong>', page_html))
     cover = _first(r'<section class="article-cover">.*?<img src="[^"]*" alt="([^"]*)"',
                    page_html)
+    cover = html.unescape(cover) if cover else None
     alt = cover if cover and cover != title else None
     caption = _text(_first(r"<figcaption>(.*?)</figcaption>", page_html))
 
