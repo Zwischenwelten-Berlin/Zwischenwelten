@@ -21,7 +21,7 @@ running the script — ask for whatever is missing, in one message rather than o
 |---|---|
 | `--md` | Path the user gave. |
 | `--image` | Path the user gave. |
-| `--lang` | Read the manuscript and infer it; state your inference and let the user correct it. One of `de en tr ru uk ar ku`. |
+| `--lang` | Read the manuscript and infer it; state your inference and let the user correct it. One of `de en tr ru uk ar ku fa`. |
 | `--date` | Publication date. Ask; do not assume today. |
 | `--author` | See below. |
 | `--slug` | Propose one from the title. Translations of an existing post reuse its slug plus a language suffix, e.g. `medienpreis-2026-tr`. |
@@ -58,13 +58,14 @@ report looks right.
 
 Authors can have a profile page at `journalistennetzwerk/<author-id>.html`, where
 `<author-id>` is their `id` in `assets/blog/authors.json` (e.g.
-`journalistennetzwerk/suleyman-bag.html`). **Every time a post is published, check
-whether its author has such a page. If yes, add the new post to the „Beiträge auf
-ZWISCHENWELTEN" grid on that page** — copy an existing `.post-card` block, update link,
-cover, date, title and excerpt. Newest post first. Translations of a post do not get
-their own card; only the original does.
+`journalistennetzwerk/suleyman-bag.html`). **`build_post` handles this automatically**:
+if the author has such a page, it adds the new post to the „Beiträge auf ZWISCHENWELTEN"
+grid — newest first — and reports the touched file in `files`/`author_page`. Translations
+of a post do not get their own card; only the original does. Your job is to verify, not
+to edit by hand: open the author page and confirm the new post appears at the top of the
+Beiträge grid.
 
-If the author has no page yet, skip this step (pages are created per author on request;
+If the author has no page yet, nothing happens (pages are created per author on request;
 `journalistennetzwerk/suleyman-bag.html` is the template to copy — photo goes to
 `assets/autoren/<author-id>.png`).
 

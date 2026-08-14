@@ -32,6 +32,7 @@ IMG_DIR = os.path.join(ROOT, "assets", "blog")
 AUTHORS = os.path.join(IMG_DIR, "authors.json")
 MANUSCRIPTS_DIR = os.path.join(IMG_DIR, "manuscripts")
 POSTS_JSON = os.path.join(IMG_DIR, "posts.json")
+AUTHOR_PAGES_DIR = os.path.join(ROOT, "journalistennetzwerk")
 SITE = "https://zwischenwelten-berlin.de"
 
 
@@ -590,6 +591,37 @@ CARD = """            <a class="post-card" href="/aktuelles/{slug}" data-lang="{
             </a>
 """
 
+AUTHOR_CARD = """            <a class="post-card" href="/aktuelles/{slug}">
+              <div class="post-thumb">
+                <img src="{cover}" alt="{alt}" loading="lazy"{dims}>
+              </div>
+              <div class="post-info">
+                <p class="post-meta">
+                  <time datetime="{iso_date}">{date_label}</time>
+                </p>
+                <h3 class="post-title">{title_plain}</h3>
+                <p class="post-excerpt">{excerpt}</p>
+                <span class="post-cta">{read_more} →</span>
+              </div>
+            </a>
+"""
+
+
+def author_page_path(author_id):
+    return os.path.join(AUTHOR_PAGES_DIR, f"{author_id}.html")
+
+
+def upsert_author_card(page_html, card, slug):
+    existing = re.search(
+        rf'[ \t]*<a class="post-card" href="/aktuelles/{re.escape(slug)}".*?</a>\n',
+        page_html, re.S)
+    if existing:
+        return page_html[:existing.start()] + card + page_html[existing.end():]
+    anchor = re.search(r'<div class="posts-grid">\n', page_html)
+    if not anchor:
+        raise PublishError("Autorenseite hat kein posts-grid — Karte kann nicht eingefügt werden.")
+    return page_html[:anchor.end()] + "\n" + card + page_html[anchor.end():]
+
 
 def strip_tags(s):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", s)).strip()
@@ -668,6 +700,7 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
     if entry and not new_author:
         author_display = entry.get("names", {}).get(lang) or entry["canonical"]
         author_canonical = entry["canonical"]
+        author_id = entry["id"]
         info(f"Author: '{name}' → known author {entry['canonical']} "
              f"(match {score:.0%}), using '{author_display}' for {lang}.")
     else:
@@ -679,9 +712,10 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
                 f"  Re-run with --new-author to register them, or pass --author with "
                 f"the spelling used in assets/blog/authors.json.")
         author_new = True
+        author_id = slugify(name)
         info(f"Author: registering new author '{name}'.")
         registry["authors"].append({
-            "id": slugify(name), "canonical": name, "role": "",
+            "id": author_id, "canonical": name, "role": "",
             "names": {lang: name}, "aliases": [],
         })
 
@@ -756,6 +790,14 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
     if author_new:
         files.append(os.path.relpath(AUTHORS, ROOT))
 
+    # ---- author page --------------------------------------------------------
+    # Translations never get a card on the author page; only the original does.
+    author_page_rel = None
+    apath = author_page_path(author_id) if author_id else None
+    if apath and os.path.exists(apath) and not original_slug:
+        author_page_rel = os.path.relpath(apath, ROOT)
+        files.append(author_page_rel)
+
     chip_added = False
     if write:
         # ---- write ----------------------------------------------------------
@@ -787,13 +829,24 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
                 json.dump(registry, fh, ensure_ascii=False, indent=2)
                 fh.write("\n")
 
+        if author_page_rel:
+            acard = AUTHOR_CARD.format(
+                slug=post_slug, cover=cover_rel, dims=dims,
+                alt=esc(alt or title).replace('"', "&quot;"),
+                iso_date=date, date_label=date_label, title_plain=esc(title),
+                excerpt=esc(teaser(subtitle, body)), read_more=cfg["read_more"],
+            )
+            page_html_author = open(apath, encoding="utf-8").read()
+            with open(apath, "w", encoding="utf-8") as fh:
+                fh.write(upsert_author_card(page_html_author, acard, post_slug))
+
     return {
         "slug": post_slug, "title": title, "subtitle": subtitle,
         "author": author_display, "author_canonical": author_canonical,
         "author_score": score, "author_new": author_new,
         "page_html": page, "card_html": card,
         "cover_rel": cover_rel, "files": files,
-        "chip_added": chip_added,
+        "chip_added": chip_added, "author_page": author_page_rel,
     }
 
 

@@ -59,6 +59,7 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setattr(publish_post, "AUTHORS", str(tmp_path / "assets" / "blog" / "authors.json"))
     monkeypatch.setattr(publish_post, "MANUSCRIPTS_DIR", str(tmp_path / "assets" / "blog" / "manuscripts"))
     monkeypatch.setattr(publish_post, "POSTS_JSON", str(tmp_path / "assets" / "blog" / "posts.json"))
+    monkeypatch.setattr(publish_post, "AUTHOR_PAGES_DIR", str(tmp_path / "journalistennetzwerk"))
     return tmp_path
 
 
@@ -121,3 +122,44 @@ def test_original_slug_recorded(repo, cover):
                                 slug="ein-test-tr", original_slug="ein-test", write=True)
     reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
     assert reg["posts"]["ein-test-tr"]["original_slug"] == "ein-test"
+
+
+AUTHOR_PAGE_MIN = """<html><body>
+          <div class="posts-grid">
+
+            <a class="post-card" href="/aktuelles/alter-beitrag">
+              <div class="post-info"><h3 class="post-title">Alt</h3></div>
+            </a>
+
+          </div>
+</body></html>"""
+
+
+@pytest.fixture
+def author_page(repo):
+    p = repo / "journalistennetzwerk" / "suleyman-bag.html"
+    p.write_text(AUTHOR_PAGE_MIN, encoding="utf-8")
+    return p
+
+
+def test_publish_adds_card_to_author_page(repo, cover, author_page):
+    r = publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    html = author_page.read_text(encoding="utf-8")
+    assert '/aktuelles/ein-test"' in html
+    assert html.index("ein-test") < html.index("alter-beitrag")  # newest first
+    assert '<h3 class="post-title">Ein Test</h3>' in html
+    assert "journalistennetzwerk/suleyman-bag.html" in r["files"]
+    assert r["author_page"] == "journalistennetzwerk/suleyman-bag.html"
+
+
+def test_translation_skips_author_page(repo, cover, author_page):
+    before = author_page.read_text(encoding="utf-8")
+    r = publish_post.build_post(MD, cover, lang="tr", date="2026-08-03",
+                                slug="ein-test-tr", original_slug="ein-test", write=True)
+    assert author_page.read_text(encoding="utf-8") == before
+    assert r["author_page"] is None
+
+
+def test_no_author_page_is_fine(repo, cover):
+    r = publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    assert r["author_page"] is None
