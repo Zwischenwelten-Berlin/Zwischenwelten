@@ -21,8 +21,11 @@ class CleanUrlHandler(http.server.SimpleHTTPRequestHandler):
 
     def translate_path(self, path):
         resolved = super().translate_path(path)
-        if not os.path.exists(resolved) and os.path.exists(resolved + ".html"):
-            return resolved + ".html"
+        # GitHub Pages serves foo.html for /foo even when a foo/ directory
+        # also exists (e.g. journalistennetzwerk.html + journalistennetzwerk/),
+        # so the .html file must win over the directory here too.
+        if not os.path.isfile(resolved) and os.path.isfile(resolved.rstrip("/") + ".html"):
+            return resolved.rstrip("/") + ".html"
         return resolved
 
 

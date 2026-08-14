@@ -54,6 +54,20 @@ Always `--dry-run` first. It reports the detected title, subtitle, author match 
 fidelity check without touching the repository. Re-run without `--dry-run` when the
 report looks right.
 
+## Author pages
+
+Authors can have a profile page at `journalistennetzwerk/<author-id>.html`, where
+`<author-id>` is their `id` in `assets/blog/authors.json` (e.g.
+`journalistennetzwerk/suleyman-bag.html`). **Every time a post is published, check
+whether its author has such a page. If yes, add the new post to the „Beiträge auf
+ZWISCHENWELTEN" grid on that page** — copy an existing `.post-card` block, update link,
+cover, date, title and excerpt. Newest post first. Translations of a post do not get
+their own card; only the original does.
+
+If the author has no page yet, skip this step (pages are created per author on request;
+`journalistennetzwerk/suleyman-bag.html` is the template to copy — photo goes to
+`assets/autoren/<author-id>.png`).
+
 ## Verify before publishing
 
 1. Serve the site (`python3 dev-server.py`) and open `/aktuelles/<slug>` **in a browser**,
@@ -61,7 +75,9 @@ report looks right.
    the page.
 2. Confirm the post carries the house style — cover, prose card, pull quotes, footer —
    and that the overview card shows the right language badge.
-3. Show the user what you published, then ask before committing and pushing. Publishing
+3. If the author has a page under `/journalistennetzwerk/`, open it and confirm the new
+   post appears in their Beiträge list.
+4. Show the user what you published, then ask before committing and pushing. Publishing
    is outward-facing; do not push on your own initiative.
 
 ## Rules that are not negotiable
