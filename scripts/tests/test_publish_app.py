@@ -124,3 +124,30 @@ def test_replace_cover_rejects_bad_extension(repo, cover):
     _, payload = h.sent
     assert payload["ok"] is False
     assert publish_app.SESSION["cover_path"] is None
+
+
+COVER_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABh6FO1AAAAABJRU5ErkJggg=="
+
+
+def test_new_author_registers_and_builds_page(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    (repo / "assets" / "autoren").mkdir(parents=True)
+    h = FakeHandler()
+    h.api_new_author({"canonical": "Ayşe Örnek", "role": "Journalistin",
+                      "page": {"bio": "Absatz eins.\n\nAbsatz zwei.",
+                               "photo_b64": COVER_PNG_B64, "photo_ext": ".png"}})
+    _, payload = h.sent
+    assert payload["ok"] and payload["id"] == "ayse-ornek"
+    reg = json.loads((repo / "assets" / "blog" / "authors.json").read_text())
+    assert any(a["id"] == "ayse-ornek" for a in reg["authors"])
+    assert (repo / "journalistennetzwerk" / "ayse-ornek.html").exists()
+    assert (repo / "assets" / "autoren" / "ayse-ornek.png").exists()
+
+
+def test_new_author_refuses_known_person(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    h = FakeHandler()
+    h.api_new_author({"canonical": "Сулейман Баг", "role": "x"})
+    _, payload = h.sent
+    assert not payload["ok"]
+    assert "Süleyman Bağ" in payload["error"]

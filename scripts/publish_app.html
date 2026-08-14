@@ -461,6 +461,27 @@
             <input type="checkbox" id="f-new-author">
             Als neue Autor:in registrieren
           </label>
+          <button type="button" id="btn-open-author-page" class="btn btn-secondary" style="margin-top:10px;">Mit Autorenseite anlegen…</button>
+
+          <div id="author-page-panel" hidden style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line-strong);">
+            <div class="field">
+              <label for="na-role">Rolle</label>
+              <input type="text" id="na-role" placeholder="z. B. Journalistin">
+            </div>
+            <div class="field">
+              <label for="na-bio">Biografie</label>
+              <textarea id="na-bio" rows="5" placeholder="Ein oder mehrere Absätze, getrennt durch Leerzeilen."></textarea>
+            </div>
+            <div class="field">
+              <label for="na-photo">Foto</label>
+              <input type="file" id="na-photo" accept=".png,.jpg,.jpeg">
+            </div>
+            <p id="author-page-error" class="banner banner-error compact" hidden></p>
+            <div class="actions">
+              <button type="button" id="btn-cancel-author-page" class="btn btn-secondary">Abbrechen</button>
+              <button type="button" id="btn-submit-author-page" class="btn btn-primary">Autor:in anlegen</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -756,6 +777,75 @@ async function renderAuthorStatus() {
     okEl.hidden = true;
     warnEl.hidden = false;
     warnText.textContent = "Unbekannte Autor:in — „" + val + "“ ist in der Autor:innen-Liste nicht bekannt.";
+  }
+}
+
+// ---- "Mit Autorenseite anlegen…" panel -----------------------------------
+// Registers a brand-new author via /api/new-author, optionally generating a
+// journalistennetzwerk/<id>.html page from scripts/author_page_template.html
+// (role + bio + photo). Lives inside #author-warn, next to the plain
+// "Als neue Autor:in registrieren" checkbox that the preview/publish flow
+// already understands — this panel is only for the extra step of also
+// creating the author's page.
+document.getElementById("btn-open-author-page").addEventListener("click", () => {
+  const panel = document.getElementById("author-page-panel");
+  panel.hidden = !panel.hidden;
+});
+
+document.getElementById("btn-cancel-author-page").addEventListener("click", () => {
+  document.getElementById("author-page-panel").hidden = true;
+  document.getElementById("author-page-error").hidden = true;
+});
+
+document.getElementById("btn-submit-author-page").addEventListener("click", submitNewAuthor);
+
+async function submitNewAuthor() {
+  const errEl = document.getElementById("author-page-error");
+  errEl.hidden = true;
+
+  const canonical = document.getElementById("f-author").value.trim();
+  const role = document.getElementById("na-role").value.trim();
+  const bio = document.getElementById("na-bio").value.trim();
+  const photoInput = document.getElementById("na-photo");
+  const photoFile = photoInput.files[0];
+
+  if (!canonical) {
+    errEl.textContent = "Bitte zuerst den Namen der Autor:in im Feld „Autor:in“ eintragen.";
+    errEl.hidden = false;
+    return;
+  }
+  if (!role || !bio || !photoFile) {
+    errEl.textContent = "Rolle, Biografie und Foto sind Pflichtfelder für eine Autorenseite.";
+    errEl.hidden = false;
+    return;
+  }
+
+  const btn = document.getElementById("btn-submit-author-page");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Wird angelegt …";
+  try {
+    const photo_b64 = await fileToB64(photoFile);
+    const photo_ext = "." + photoFile.name.split(".").pop().toLowerCase();
+    const r = await api("/api/new-author", {
+      canonical, role,
+      page: { bio, photo_b64, photo_ext },
+    });
+    if (!r.ok) { errEl.textContent = r.error; errEl.hidden = false; return; }
+
+    document.getElementById("author-page-panel").hidden = true;
+    document.getElementById("na-role").value = "";
+    document.getElementById("na-bio").value = "";
+    photoInput.value = "";
+    document.getElementById("f-author").value = r.canonical;
+    document.getElementById("f-new-author").checked = false;
+    renderAuthorStatus();
+  } catch (e) {
+    errEl.textContent = "Netzwerkfehler: " + (e && e.message ? e.message : e);
+    errEl.hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
   }
 }
 

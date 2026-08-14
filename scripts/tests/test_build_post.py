@@ -215,3 +215,18 @@ def test_new_post_still_refuses_existing_slug(repo, cover):
     publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
     with pytest.raises(publish_post.PublishError):
         publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+
+
+def test_render_author_page(repo):
+    html = publish_post.render_author_page(
+        "Ayşe Örnek", "Journalistin", ["Absatz eins.", "Absatz zwei."],
+        "/assets/autoren/ayse-ornek.png")
+    assert "Ayşe Örnek" in html
+    assert "<p>Absatz eins.</p>" in html
+    assert '<div class="posts-grid">' in html
+    assert "Süleyman" not in html
+    # the generated grid must accept cards
+    card = publish_post.AUTHOR_CARD.format(
+        slug="x", cover="/c.png", dims="", alt="", iso_date="2026-01-01",
+        date_label="1. Januar 2026", title_plain="X", excerpt="", read_more="Weiterlesen")
+    assert "/aktuelles/x" in publish_post.upsert_author_card(html, card, "x")

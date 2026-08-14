@@ -608,6 +608,27 @@ AUTHOR_CARD = """            <a class="post-card" href="/aktuelles/{slug}">
 """
 
 
+AUTHOR_PAGE_TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "author_page_template.html")
+
+
+def render_author_page(name, role, bio_paragraphs, photo_rel):
+    """Render a new author page from scripts/author_page_template.html.
+
+    Manual placeholder replacement (not str.format) because the template's
+    embedded CSS/JS is full of literal braces.
+    """
+    tpl = open(AUTHOR_PAGE_TEMPLATE, encoding="utf-8").read()
+    bio_html = "\n                  ".join(
+        f"<p>{esc(p)}</p>" for p in bio_paragraphs if p.strip())
+    for key, val in [("__NAME__", esc(name)), ("__ROLE__", esc(role)),
+                     ("__PHOTO__", photo_rel), ("__BIO__", bio_html),
+                     ("__DESCRIPTION__",
+                      esc(f"{name} – {role}. Porträt und Beiträge auf ZWISCHENWELTEN."))]:
+        tpl = tpl.replace(key, val)
+    return tpl
+
+
 def author_page_path(author_id):
     return os.path.join(AUTHOR_PAGES_DIR, f"{author_id}.html")
 

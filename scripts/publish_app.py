@@ -66,6 +66,91 @@ def _rebase_in_progress():
     return False
 
 
+_PULL_WARN_MARK = "\x00pull-warn\x00"
+
+
+def _pull(log):
+    """`git pull --rebase --autostash`, appending the command transcript to
+    `log` (a list the caller owns). Returns True on success.
+
+    `--autostash` (rather than the pre-refactor plain `--rebase`) matters
+    because both git_flow's callers write their files to disk *before*
+    pulling — `git add` needs the files to exist — so the working tree is
+    essentially never clean when this runs. Autostash makes that safe: it
+    stashes the just-written files, rebases, and reapplies them, so a
+    plain "nothing to pull" run is still a no-op and a real upstream
+    change still rebases cleanly on top of the stashed work.
+
+    On failure, attempts to recover a stuck rebase (`_abort_stuck_rebase`);
+    if *that* also fails, its German warning text is appended to `log`
+    behind a private marker that `split_pull_warning` extracts, so a
+    caller can fold it into its user-facing "pull" error message without
+    it also polluting the git_output transcript shown verbatim in the UI.
+    """
+    code, out = run_git("pull", "--rebase", "--autostash")
+    log.append(f"$ git pull --rebase --autostash\n{out}")
+    if code != 0:
+        warn = _abort_stuck_rebase(log)
+        if warn:
+            log.append(f"{_PULL_WARN_MARK}{warn}")
+        return False
+    return True
+
+
+def split_pull_warning(log):
+    """Split a _pull/git_flow log back into (git_output, warning_suffix).
+    warning_suffix is "" unless _abort_stuck_rebase escalated; see _pull."""
+    if _PULL_WARN_MARK in log:
+        base, warn = log.split(_PULL_WARN_MARK, 1)
+        return base.rstrip("\n"), warn
+    return log, ""
+
+
+def _add_commit_push(files, msg, log):
+    """`git add`, `commit`, `push` `files` under `msg`, appending each
+    command's transcript to `log`. Returns the failing stage
+    ("add"/"commit"/"push"), or "" on success."""
+    code, out = run_git("add", "--", *files)
+    log.append(f"$ git add {' '.join(files)}\n{out}")
+    if code != 0:
+        return "add"
+
+    code, out = run_git("commit", "-m", msg)
+    log.append(f"$ git commit -m {msg!r}\n{out}")
+    if code != 0:
+        return "commit"
+
+    code, out = run_git("push", "origin", "HEAD")
+    log.append(f"$ git push origin HEAD\n{out}")
+    if code != 0:
+        return "push"
+
+    return ""
+
+
+def git_flow(files, msg):
+    """Shared pull/add/commit/push sequence, built from `_pull` and
+    `_add_commit_push`. Returns (ok, stage, log) where stage is "" on
+    success and one of "pull"/"add"/"commit"/"push" on failure; log is the
+    joined command transcript (see `_pull` for the "pull" stage's warning
+    marker). Used directly by api_new_author, whose files are written to
+    disk before this is called.
+
+    api_publish calls `_pull`/`_add_commit_push` itself instead of this
+    function — it needs `build_post`'s write to happen *between* the pull
+    and the add, to keep its pre-refactor observable behaviour (including
+    exact git_output content on a `build_post` failure) byte-for-byte
+    unchanged. See its docstring for the mapping.
+    """
+    log = []
+    if not _pull(log):
+        return False, "pull", "\n\n".join(log)
+    stage = _add_commit_push(files, msg, log)
+    if stage:
+        return False, stage, "\n\n".join(log)
+    return True, "", "\n\n".join(log)
+
+
 def _abort_stuck_rebase(log):
     """Called after a failed `git pull --rebase`. Only runs `git rebase
     --abort` (and only ever escalates to the German "repo may be stuck
@@ -162,6 +247,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.api_retry_push()
             elif self.path == "/api/author-check":
                 self.api_author_check(body)
+            elif self.path == "/api/new-author":
+                self.api_new_author(body)
             elif self.path == "/api/posts":
                 self.api_posts(body)
             elif self.path == "/api/edit-load":
@@ -391,17 +478,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         })
 
     def api_publish(self):
+        # Pulls before build_post writes anything (via the shared `_pull`,
+        # same helper git_flow uses for its own first step) so a pull
+        # failure here truly precedes any local write, then hands the
+        # add/commit/push half to `_add_commit_push` — also shared with
+        # git_flow. It doesn't call the top-level `git_flow` in one shot
+        # because build_post's write has to happen *between* the pull and
+        # the add (build_post needs `files`/the commit title, which don't
+        # exist until it runs) — see git_flow's docstring.
         if not SESSION["publish_args"]:
             raise PublishError("Bitte zuerst die Vorschau erzeugen.")
         log = []
 
-        code, out = run_git("pull", "--rebase")
-        log.append(f"$ git pull --rebase\n{out}")
-        if code != 0:
-            error = "git pull --rebase ist fehlgeschlagen — nichts wurde veröffentlicht."
-            error += _abort_stuck_rebase(log)
+        if not _pull(log):
+            git_output, warn = split_pull_warning("\n\n".join(log))
+            error = "git pull --rebase ist fehlgeschlagen — nichts wurde veröffentlicht." + warn
             self.send_json({"ok": False, "stage": "pull", "error": error,
-                            "git_output": "\n\n".join(log)})
+                            "git_output": git_output})
             return
 
         try:
@@ -411,19 +504,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             "git_output": "\n\n".join(log)})
             return
 
-        code, out = run_git("add", "--", *r["files"])
-        log.append(f"$ git add {' '.join(r['files'])}\n{out}")
-        if code != 0:
+        msg = f"content: {'update' if SESSION['mode'] == 'edit' else 'add'} {r['title']}"
+        stage = _add_commit_push(r["files"], msg, log)
+        if stage == "add":
             self.send_json({"ok": False, "stage": "add",
                             "error": "git add ist fehlgeschlagen. Die Beitragsdateien wurden bereits "
                                      "geschrieben — bitte im Terminal prüfen.",
                             "git_output": "\n\n".join(log), "files": r["files"]})
             return
-
-        msg = f"content: {'update' if SESSION['mode'] == 'edit' else 'add'} {r['title']}"
-        code, out = run_git("commit", "-m", msg)
-        log.append(f"$ git commit -m {msg!r}\n{out}")
-        if code != 0:
+        if stage == "commit":
             self.send_json({"ok": False, "stage": "commit",
                             "error": "git commit ist fehlgeschlagen. Die Dateien des Beitrags sind "
                                      "bereits geschrieben und mit git add vorgemerkt (im Index) — "
@@ -431,10 +520,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                      "Pre-Commit-Hook) und dort manuell committen und pushen.",
                             "git_output": "\n\n".join(log), "files": r["files"]})
             return
-
-        code, out = run_git("push", "origin", "HEAD")
-        log.append(f"$ git push origin HEAD\n{out}")
-        if code != 0:
+        if stage == "push":
             self.send_json({"ok": False, "stage": "push",
                             "error": "git push wurde abgelehnt. Lokal ist der Post committet — "
                                      "»Erneut versuchen« führt pull --rebase + push aus.",
@@ -470,6 +556,58 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         slug = SESSION["preview"]["slug"] if SESSION["preview"] else ""
         self.send_json({"ok": True, "url": f"https://zwischenwelten-berlin.de/aktuelles/{slug}",
                         "commit": "", "git_output": "\n\n".join(log)})
+
+    def api_new_author(self, body):
+        # Caught locally (not left to do_POST's handler) so this behaves
+        # the same whether reached via HTTP dispatch or called directly, as
+        # the test harness does — same pattern as api_edit_load et al.
+        # Paths are resolved through publish_post.ROOT/AUTHORS/etc. at call
+        # time (never the ROOT imported at module load) so the `repo` test
+        # fixture's monkeypatching of publish_post reaches this handler.
+        try:
+            name = (body.get("canonical") or "").strip()
+            role = (body.get("role") or "").strip()
+            if not name or not role:
+                raise PublishError("Name und Rolle sind Pflichtfelder.")
+            registry = publish_post.load_authors()
+            entry, _ = publish_post.match_author(name, registry)
+            if entry:
+                raise PublishError(
+                    f"'{name}' ist bereits als '{entry['canonical']}' registriert.")
+            author_id = publish_post.slugify(name)
+            registry["authors"].append({
+                "id": author_id, "canonical": name, "role": role,
+                "names": body.get("names") or {}, "aliases": body.get("aliases") or [],
+            })
+            with open(publish_post.AUTHORS, "w", encoding="utf-8") as fh:
+                json.dump(registry, fh, ensure_ascii=False, indent=2)
+                fh.write("\n")
+            files = [os.path.relpath(publish_post.AUTHORS, publish_post.ROOT)]
+
+            page = body.get("page")
+            if page:
+                ext = (page.get("photo_ext") or ".png").lower()
+                if ext not in (".png", ".jpg", ".jpeg"):
+                    raise PublishError("Autorenfoto muss .png oder .jpg sein.")
+                photo_dir = os.path.join(publish_post.ROOT, "assets", "autoren")
+                os.makedirs(photo_dir, exist_ok=True)
+                photo_path = os.path.join(photo_dir, author_id + ext)
+                with open(photo_path, "wb") as fh:
+                    fh.write(base64.b64decode(page["photo_b64"]))
+                photo_rel = "/" + os.path.relpath(photo_path, publish_post.ROOT)
+                bio_paras = [p.strip() for p in (page.get("bio") or "").split("\n\n")]
+                html = publish_post.render_author_page(name, role, bio_paras, photo_rel)
+                apath = publish_post.author_page_path(author_id)
+                with open(apath, "w", encoding="utf-8") as fh:
+                    fh.write(html)
+                files += [os.path.relpath(apath, publish_post.ROOT),
+                         os.path.relpath(photo_path, publish_post.ROOT)]
+
+            ok, stage, log = git_flow(files, f"content: Autor:in {name} registriert")
+            self.send_json({"ok": True, "id": author_id, "canonical": name,
+                            "committed": ok, "git_output": log})
+        except PublishError as e:
+            self.send_json({"ok": False, "error": str(e)})
 
     def log_message(self, fmt, *args):   # quieter console
         # send_error()/log_error() call this with args[0] being an HTTPStatus
