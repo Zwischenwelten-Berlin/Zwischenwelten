@@ -11,6 +11,7 @@ runs before anything is written.
 """
 
 import base64
+import glob
 import http.server
 import json
 import os
@@ -28,7 +29,19 @@ PORT = 8765
 APP_HTML = os.path.join(os.path.dirname(os.path.abspath(__file__)), "publish_app.html")
 
 # Single-editor session state: uploaded cover, last preview, last publish args.
-SESSION = {"cover_path": None, "cover_rel": None, "preview": None, "publish_args": None}
+# mode is one of "new" (fresh manuscript), "edit" (editing an existing post,
+# slug/lang immutable), or "translate" (new-language version of an original,
+# slug forced to f"{translate_of}-{lang}").
+SESSION = {"cover_path": None, "cover_rel": None, "preview": None, "publish_args": None,
+           "mode": "new", "translate_of": None, "edit_slug": None}
+
+
+def _cover_path_for(slug):
+    """Absolute path to slug's cover image in the repo, or None if missing.
+    Resolves publish_post.IMG_DIR at call time (not import time) so tests
+    that monkeypatch it see the patched value."""
+    matches = glob.glob(os.path.join(publish_post.IMG_DIR, f"{slug}-cover.*"))
+    return matches[0] if matches else None
 
 
 def run_git(*args):
@@ -110,6 +123,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/":
             self.send_html(open(APP_HTML, encoding="utf-8").read())
+        elif path == "/api/posts":
+            try:
+                self.api_posts()
+            except (ManuscriptError, PublishError) as e:
+                self.send_json({"ok": False, "error": str(e)})
+            except Exception as e:                  # noqa: BLE001 — show, don't crash
+                self.send_json({"ok": False, "error": f"{type(e).__name__}: {e}"}, status=500)
         elif path == "/preview/page":
             if not SESSION["preview"]:
                 self.send_error(404, "No preview yet")
@@ -142,6 +162,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.api_retry_push()
             elif self.path == "/api/author-check":
                 self.api_author_check(body)
+            elif self.path == "/api/posts":
+                self.api_posts(body)
+            elif self.path == "/api/edit-load":
+                self.api_edit_load(body)
+            elif self.path == "/api/translation-init":
+                self.api_translation_init(body)
             else:
                 self.send_error(404)
         except (ManuscriptError, PublishError) as e:
@@ -151,18 +177,27 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def api_convert(self, body):
         # A new manuscript invalidates any prior preview/publish state — never
-        # let a stale draft be published after a fresh conversion.
+        # let a stale draft be published after a fresh conversion. A fresh
+        # (non-translate) convert also invalidates any prior edit/translate
+        # session; a translation's manuscript, however, arrives via convert
+        # too, so translate mode (and its original's cover) must survive.
         SESSION["preview"] = None
         SESSION["publish_args"] = None
+        if SESSION["mode"] != "translate":
+            SESSION.update(mode="new", translate_of=None, edit_slug=None)
         md, warnings = load_manuscript(body["manuscript_name"],
                                        base64.b64decode(body["manuscript_b64"]))
-        # cover -> temp file, remember the future URL for the preview
-        cover_ext = os.path.splitext(body["cover_name"])[1].lower() or ".jpg"
-        if cover_ext not in (".jpg", ".jpeg", ".png"):
-            raise ManuscriptError(f"Cover muss .jpg oder .png sein, nicht {cover_ext}.")
-        fd, SESSION["cover_path"] = tempfile.mkstemp(suffix=cover_ext)
-        with os.fdopen(fd, "wb") as fh:
-            fh.write(base64.b64decode(body["cover_b64"]))
+        # cover -> temp file, remember the future URL for the preview. In
+        # translate mode the cover is optional — SESSION["cover_path"]
+        # already holds the original post's cover (set by
+        # api_translation_init) unless a new one is uploaded here.
+        if not (SESSION["mode"] == "translate" and not body.get("cover_b64")):
+            cover_ext = os.path.splitext(body["cover_name"])[1].lower() or ".jpg"
+            if cover_ext not in (".jpg", ".jpeg", ".png"):
+                raise ManuscriptError(f"Cover muss .jpg oder .png sein, nicht {cover_ext}.")
+            fd, SESSION["cover_path"] = tempfile.mkstemp(suffix=cover_ext)
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(base64.b64decode(body["cover_b64"]))
 
         lang = detect_lang(md)
         title = subtitle = None
@@ -197,7 +232,79 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         "canonical": entry["canonical"] if entry else None,
                         "score": round(score, 2)})
 
+    def api_posts(self, body=None):
+        posts = publish_post.load_posts()["posts"]
+
+        def entry(slug):
+            e = dict(posts[slug], slug=slug)
+            cover = _cover_path_for(slug)
+            e["cover"] = "/" + os.path.relpath(cover, publish_post.ROOT) if cover else None
+            return e
+
+        originals = sorted(
+            (s for s, e in posts.items() if not e.get("original_slug")),
+            key=lambda s: posts[s]["date"] or "", reverse=True)
+        out = []
+        for slug in originals:
+            e = entry(slug)
+            e["translations"] = sorted(
+                (entry(s) for s, t in posts.items() if t.get("original_slug") == slug),
+                key=lambda t: t["lang"])
+            out.append(e)
+        self.send_json({"ok": True, "posts": out})
+
+    def api_edit_load(self, body):
+        slug = body["slug"]
+        posts = publish_post.load_posts()["posts"]
+        try:
+            if slug not in posts:
+                raise PublishError(f"'{slug}' ist nicht im Register.")
+            if posts[slug].get("locked"):
+                raise PublishError(f"'{slug}' ist gesperrt und kann nur im Terminal bearbeitet werden.")
+            ms = os.path.join(publish_post.MANUSCRIPTS_DIR, slug + ".md")
+            if not os.path.exists(ms):
+                raise PublishError(f"Manuskript für '{slug}' fehlt — bitte Backfill prüfen.")
+        except PublishError as e:
+            # Caught locally (not left to do_POST's handler) so this method
+            # behaves the same whether reached via the HTTP dispatch or
+            # called directly, as the test harness does.
+            self.send_json({"ok": False, "error": str(e)})
+            return
+        SESSION.update(mode="edit", translate_of=None, edit_slug=slug, preview=None,
+                       publish_args=None, cover_rel=None,
+                       cover_path=_cover_path_for(slug))
+        e = posts[slug]
+        self.send_json({"ok": True, "markdown": open(ms, encoding="utf-8").read(),
+                        "slug": slug, "cover": "/" + os.path.relpath(SESSION["cover_path"], publish_post.ROOT)
+                            if SESSION["cover_path"] else None,
+                        "langs": {c: cfg["label"] for c, cfg in LANGS.items()},
+                        **{k: e[k] for k in ("title", "lang", "date", "author",
+                                             "tag", "highlight", "alt", "caption")}})
+
+    def api_translation_init(self, body):
+        slug = body["slug"]
+        posts = publish_post.load_posts()["posts"]
+        if slug not in posts:
+            raise PublishError(f"'{slug}' ist nicht im Register.")
+        taken = {posts[slug]["lang"]} | {
+            t["lang"] for t in posts.values() if t.get("original_slug") == slug}
+        SESSION.update(mode="translate", translate_of=slug, edit_slug=None, preview=None,
+                       publish_args=None, cover_rel=None,
+                       cover_path=_cover_path_for(slug))
+        self.send_json({"ok": True, "original": dict(posts[slug], slug=slug),
+                        "author": posts[slug]["author"],
+                        "cover": "/" + os.path.relpath(SESSION["cover_path"], publish_post.ROOT)
+                            if SESSION["cover_path"] else None,
+                        "available_langs": {c: LANGS[c]["label"]
+                                            for c in LANGS if c not in taken}})
+
     def api_preview(self, body):
+        # Slug (and, for edit, language) are immutable once a post is being
+        # edited or translated — never trust whatever the UI happened to send.
+        if SESSION["mode"] == "translate":
+            body["slug"] = f"{SESSION['translate_of']}-{body['lang']}"
+        elif SESSION["mode"] == "edit":
+            body["slug"] = SESSION["edit_slug"]
         kwargs = dict(
             md_text=body["markdown"], image_path=SESSION["cover_path"],
             lang=body["lang"], date=body["date"],
@@ -205,6 +312,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             tag=body.get("tag") or None, highlight=body.get("highlight") or None,
             alt=body.get("alt") or None, caption=body.get("caption") or None,
             new_author=bool(body.get("new_author")),
+            update=(SESSION["mode"] == "edit"),
+            original_slug=SESSION.get("translate_of"),
         )
         if not SESSION["cover_path"]:
             raise PublishError("Kein Cover hochgeladen — bitte von vorn beginnen.")
@@ -235,7 +344,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_json({
             "ok": True, "fidelity_ok": True,
             "slug": r["slug"], "title": r["title"], "card_html": r["card_html"],
-            "slug_exists": os.path.exists(
+            # In edit mode the page exists by definition — not a conflict.
+            "slug_exists": False if SESSION["mode"] == "edit" else os.path.exists(
                 os.path.join(ROOT, "aktuelles", r["slug"] + ".html")),
             "branch": current_branch(),
         })
@@ -270,7 +380,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             "git_output": "\n\n".join(log), "files": r["files"]})
             return
 
-        msg = f"content: add {r['title']}"
+        msg = f"content: {'update' if SESSION['mode'] == 'edit' else 'add'} {r['title']}"
         code, out = run_git("commit", "-m", msg)
         log.append(f"$ git commit -m {msg!r}\n{out}")
         if code != 0:
