@@ -168,6 +168,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.api_edit_load(body)
             elif self.path == "/api/translation-init":
                 self.api_translation_init(body)
+            elif self.path == "/api/replace-cover":
+                self.api_replace_cover(body)
             else:
                 self.send_error(404)
         except (ManuscriptError, PublishError) as e:
@@ -314,6 +316,27 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             if SESSION["cover_path"] else None,
                         "available_langs": {c: LANGS[c]["label"]
                                             for c in LANGS if c not in taken}})
+
+    def api_replace_cover(self, body):
+        # Used from the edit/translate form to swap the cover shown in the
+        # editor without going through /api/convert again. Mirrors
+        # api_convert's cover-temp-file handling. Caught locally (not left
+        # to do_POST's handler) so this behaves the same whether reached via
+        # HTTP or called directly, as the test harness does.
+        cover_ext = os.path.splitext(body["cover_name"])[1].lower() or ".jpg"
+        if cover_ext not in (".jpg", ".jpeg", ".png"):
+            self.send_json({"ok": False,
+                            "error": f"Cover muss .jpg oder .png sein, nicht {cover_ext}."})
+            return
+        fd, SESSION["cover_path"] = tempfile.mkstemp(suffix=cover_ext)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(base64.b64decode(body["cover_b64"]))
+        # A new cover invalidates any existing preview/publish state — the
+        # page HTML embeds the old cover's URL, so it must be regenerated.
+        SESSION["cover_rel"] = None
+        SESSION["preview"] = None
+        SESSION["publish_args"] = None
+        self.send_json({"ok": True})
 
     def api_preview(self, body):
         # Slug (and, for edit, language) are immutable once a post is being

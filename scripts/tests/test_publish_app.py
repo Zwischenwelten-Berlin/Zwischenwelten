@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import sys
@@ -94,3 +95,32 @@ def test_preview_in_translate_mode_forces_slug(repo, cover):
     _, payload = h.sent
     assert payload["ok"] and payload["fidelity_ok"]
     assert payload["slug"] == "ein-test-tr"
+
+
+def test_replace_cover_swaps_session_cover_and_invalidates_preview(repo, cover):
+    published(repo, cover)
+    h = FakeHandler()
+    h.api_edit_load({"slug": "ein-test"})
+    h.api_preview({"markdown": MD, "lang": "de", "date": "2026-08-03"})
+    assert publish_app.SESSION["preview"] is not None
+    assert publish_app.SESSION["publish_args"] is not None
+
+    new_bytes = b"fake-new-cover-bytes"
+    h.api_replace_cover({"cover_name": "new-cover.jpg",
+                         "cover_b64": base64.b64encode(new_bytes).decode()})
+    _, payload = h.sent
+    assert payload["ok"]
+    assert publish_app.SESSION["preview"] is None
+    assert publish_app.SESSION["publish_args"] is None
+    assert os.path.exists(publish_app.SESSION["cover_path"])
+    with open(publish_app.SESSION["cover_path"], "rb") as fh:
+        assert fh.read() == new_bytes
+
+
+def test_replace_cover_rejects_bad_extension(repo, cover):
+    h = FakeHandler()
+    h.api_replace_cover({"cover_name": "malware.exe",
+                         "cover_b64": base64.b64encode(b"x").decode()})
+    _, payload = h.sent
+    assert payload["ok"] is False
+    assert publish_app.SESSION["cover_path"] is None

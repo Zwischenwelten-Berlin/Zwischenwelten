@@ -144,6 +144,14 @@
   @media (max-width:520px){
     .dropzones{ grid-template-columns:1fr; }
   }
+  .dropzone.is-optional{ opacity:.75; }
+
+  /* ---------- cover replace (edit/translate) ---------- */
+  #cover-replace-wrap{ flex-direction:row; align-items:center; gap:14px; }
+  #cover-thumb{
+    width:96px; height:64px; object-fit:cover; border-radius:8px;
+    border:1px solid var(--line-strong); background:var(--bg);
+  }
 
   /* ---------- buttons ---------- */
   .actions{ display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
@@ -423,6 +431,15 @@
         <div id="f-subtitle-display" class="static-value subtitle" hidden></div>
       </div>
 
+      <div class="field" id="cover-replace-wrap" hidden>
+        <img id="cover-thumb" alt="" hidden>
+        <div>
+          <label for="input-cover-replace" class="btn btn-secondary" style="display:inline-block; cursor:pointer;">Titelbild ersetzen</label>
+          <input type="file" id="input-cover-replace" accept=".jpg,.jpeg,.png" hidden>
+          <p id="cover-replace-error" class="banner banner-error compact" hidden></p>
+        </div>
+      </div>
+
       <div class="field-row">
         <div class="field">
           <label for="f-lang">Sprache</label>
@@ -552,7 +569,7 @@
 </main>
 
 <script>
-const state = { mode: "new", manuscript: null, cover: null, convert: null, preview: null };
+const state = { mode: "new", manuscript: null, cover: null, convert: null, preview: null, translateInit: null };
 let previewFresh = false;      // gates the publish button
 let publishPending = false;
 let convertPending = false;
@@ -602,7 +619,9 @@ function show(id) {
   if (id === "screen-home" || id === "screen-list") {
     h1.textContent = "Blog verwalten";
   } else if (isWizard) {
-    h1.textContent = MODE_TITLES[state.mode] || MODE_TITLES.new;
+    h1.textContent = (state.mode === "translate" && state.translateInit)
+      ? `Übersetzung: ${state.translateInit.original.title}`
+      : (MODE_TITLES[state.mode] || MODE_TITLES.new);
   }
 
   if (isWizard) updateSteps(id);
@@ -624,7 +643,12 @@ function setFile(key, file, zone, nameEl) {
 }
 
 function updateContinueButton() {
-  document.getElementById("btn-continue").disabled = !(state.manuscript && state.cover);
+  // In translate mode the cover is inherited from the original post, so the
+  // manuscript alone is enough to continue.
+  const ready = state.mode === "translate"
+    ? !!state.manuscript
+    : !!(state.manuscript && state.cover);
+  document.getElementById("btn-continue").disabled = !ready;
 }
 
 function setupDropzone(zoneId, inputId, nameId, key) {
@@ -661,15 +685,21 @@ async function doConvert() {
   document.getElementById("drop-error").hidden = true;
 
   try {
-    const r = await api("/api/convert", {
+    const payload = {
       manuscript_name: state.manuscript.name,
       manuscript_b64: await fileToB64(state.manuscript),
-      cover_name: state.cover.name,
-      cover_b64: await fileToB64(state.cover),
-    });
+    };
+    // In translate mode the cover is optional (inherited from the original)
+    // — only attach it if the editor actually picked one to override it.
+    if (state.cover) {
+      payload.cover_name = state.cover.name;
+      payload.cover_b64 = await fileToB64(state.cover);
+    }
+    const r = await api("/api/convert", payload);
     if (!r.ok) { showError("screen-drop", r.error); return; }
     state.convert = r;
     fillForm(r);
+    if (state.mode === "translate") applyTranslateFormUI(r);
     show("screen-form");
   } catch (e) {
     showError("screen-drop", "Netzwerkfehler: " + (e && e.message ? e.message : e));
@@ -730,6 +760,15 @@ async function renderAuthorStatus() {
 }
 
 function fillForm(r) {
+  // Every entry point (new/edit/translate) funnels through here, so this is
+  // the single place that restores a clean baseline before mode-specific
+  // code (startEdit/applyTranslateFormUI) re-applies its own lock/restrict.
+  document.getElementById("f-slug").disabled = false;
+  document.getElementById("f-lang").disabled = false;
+  document.getElementById("btn-restart").textContent =
+    (state.mode === "edit" || state.mode === "translate")
+      ? "← Zurück zur Übersicht" : "← Andere Dateien wählen";
+
   const titleEl = document.getElementById("f-title-display");
   if (r.title) {
     titleEl.textContent = r.title;
@@ -753,13 +792,16 @@ function fillForm(r) {
   }
   langSel.value = r.lang;
 
-  document.getElementById("f-date").value = new Date().toISOString().slice(0, 10);
-  document.getElementById("f-author").value = r.author.name || "";
+  document.getElementById("f-date").value = r.date || new Date().toISOString().slice(0, 10);
+  // /api/convert's author is {name, canonical, ...}; /api/edit-load's is a
+  // plain string straight from the registry — accept either shape.
+  const authorVal = typeof r.author === "string" ? r.author : (r.author && r.author.name) || "";
+  document.getElementById("f-author").value = authorVal;
   document.getElementById("f-slug").value = r.slug || "";
-  document.getElementById("f-tag").value = "";
-  document.getElementById("f-highlight").value = "";
-  document.getElementById("f-alt").value = r.title || "";
-  document.getElementById("f-caption").value = "";
+  document.getElementById("f-tag").value = r.tag || "";
+  document.getElementById("f-highlight").value = r.highlight || "";
+  document.getElementById("f-alt").value = r.alt || r.title || "";
+  document.getElementById("f-caption").value = r.caption || "";
   document.getElementById("f-markdown").value = r.markdown || "";
   document.getElementById("f-new-author").checked = false;
 
@@ -781,6 +823,28 @@ function fillForm(r) {
 
   document.getElementById("form-error").hidden = true;
   setPublishEnabled(false); // any fresh convert needs its own fresh preview
+
+  // "Titelbild ersetzen" only makes sense once a cover already exists on the
+  // server side (edit: the post's own cover; translate: inherited from the
+  // original) — hidden for a plain new post, where the cover comes from the
+  // drop screen instead.
+  const coverWrap = document.getElementById("cover-replace-wrap");
+  if (state.mode === "edit") {
+    coverWrap.hidden = false;
+    showCoverThumb(r.cover);
+  } else if (state.mode === "translate") {
+    coverWrap.hidden = false;
+    showCoverThumb(state.translateInit && state.translateInit.cover);
+  } else {
+    coverWrap.hidden = true;
+    showCoverThumb(null);
+  }
+}
+
+function showCoverThumb(url) {
+  const img = document.getElementById("cover-thumb");
+  if (url) { img.src = url; img.hidden = false; }
+  else { img.src = ""; img.hidden = true; }
 }
 
 function formPayload() {
@@ -854,7 +918,8 @@ function setPublishPending(v) {
 function refreshPublishButton() {
   const btn = document.getElementById("btn-publish");
   btn.disabled = publishPending || !previewFresh;
-  btn.textContent = publishPending ? "Wird veröffentlicht …" : "Veröffentlichen";
+  const label = state.mode === "edit" ? "Änderungen veröffentlichen" : "Veröffentlichen";
+  btn.textContent = publishPending ? "Wird veröffentlicht …" : label;
 }
 
 function renderPreview(r) {
@@ -926,6 +991,8 @@ function renderResult(r) {
   document.getElementById("result-failure").hidden = !!r.ok;
 
   if (r.ok) {
+    document.querySelector("#result-success h2").textContent =
+      state.mode === "edit" ? "Aktualisiert!" : "Veröffentlicht!";
     const link = document.getElementById("result-link");
     link.href = r.url;
     link.textContent = r.url;
@@ -1018,13 +1085,131 @@ function resetDropScreen() {
   updateContinueButton();
 }
 
+function setCoverZoneOptional(isOptional) {
+  const zone = document.getElementById("zone-cover");
+  zone.classList.toggle("is-optional", isOptional);
+  zone.querySelector(".zone-hint").textContent = isOptional
+    ? "optional — Titelbild wird vom Original übernommen"
+    : ".jpg · .jpeg · .png";
+}
+
+function enterNewMode() {
+  state.mode = "new";
+  state.translateInit = null;
+  document.getElementById("f-slug").disabled = false;
+  document.getElementById("f-lang").disabled = false;
+  document.getElementById("cover-replace-wrap").hidden = true;
+  resetDropScreen();
+  setCoverZoneOptional(false);
+}
+
+function showListError(message) {
+  show("screen-list");
+  const el = document.getElementById("list-error");
+  el.textContent = message;
+  el.hidden = false;
+}
+
+// Used by the form screen's "back" link once inside edit/translate mode:
+// there is no drop screen to return to (edit skips it; a translate's files
+// are already converted), so go back to the post list instead and reset to
+// a clean "new" baseline.
+function exitToList() {
+  state.mode = "new";
+  state.translateInit = null;
+  document.getElementById("f-slug").disabled = false;
+  document.getElementById("f-lang").disabled = false;
+  document.getElementById("cover-replace-wrap").hidden = true;
+  setPublishEnabled(false);
+  show("screen-list");
+  loadList();
+}
+
+// ---- screen 0/0b: edit + translate flows -----------------------------------
+async function startEdit(slug) {
+  const r = await api("/api/edit-load", { slug });
+  if (!r.ok) { showListError(r.error); return; }
+  state.mode = "edit";
+  state.convert = r;
+  fillForm(r);                 // fillForm reads state.mode to lock/populate accordingly
+  document.getElementById("f-slug").disabled = true;
+  document.getElementById("f-lang").disabled = true;
+  show("screen-form");
+}
+
+async function startTranslate(slug) {
+  const r = await api("/api/translation-init", { slug });
+  if (!r.ok) { showListError(r.error); return; }
+  state.mode = "translate";
+  state.translateInit = r;
+  resetDropScreen();
+  setCoverZoneOptional(true);
+  show("screen-drop");
+}
+
+function applyTranslateFormUI(r) {
+  const ti = state.translateInit;
+  const langSel = document.getElementById("f-lang");
+  langSel.innerHTML = "";
+  for (const [code, label] of Object.entries(ti.available_langs)) {
+    const opt = document.createElement("option");
+    opt.value = code;
+    opt.textContent = label;
+    langSel.appendChild(opt);
+  }
+  const codes = Object.keys(ti.available_langs);
+  langSel.value = codes.includes(r.lang) ? r.lang : (codes[0] || "");
+
+  // Only override the author field if the manuscript itself had no byline —
+  // a detected byline should still win, same as a fresh "new post" convert.
+  const hasByline = r.author && r.author.name;
+  if (!hasByline) {
+    document.getElementById("f-author").value = ti.author || "";
+    renderAuthorStatus();
+  }
+
+  document.getElementById("f-slug").disabled = true;
+  updateTranslateSlug();
+}
+
+function updateTranslateSlug() {
+  document.getElementById("f-slug").value =
+    `${state.translateInit.original.slug}-${document.getElementById("f-lang").value}`;
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function doReplaceCover(file) {
+  const errEl = document.getElementById("cover-replace-error");
+  errEl.hidden = true;
+  try {
+    const dataUrl = await fileToDataUrl(file);
+    const r = await api("/api/replace-cover",
+      { cover_name: file.name, cover_b64: dataUrl.split(",", 2)[1] });
+    if (!r.ok) { errEl.textContent = r.error; errEl.hidden = false; return; }
+    // The server's temp cover path isn't served over HTTP, so show the
+    // just-picked file directly via its own data URL.
+    showCoverThumb(dataUrl);
+    setPublishEnabled(false); // a changed cover invalidates any existing preview
+  } catch (e) {
+    errEl.textContent = "Netzwerkfehler: " + (e && e.message ? e.message : e);
+    errEl.hidden = false;
+  }
+}
+
 // ---- wiring ---------------------------------------------------------------
 setupDropzone("zone-manuscript", "input-manuscript", "name-manuscript", "manuscript");
 setupDropzone("zone-cover", "input-cover", "name-cover", "cover");
 
 onActivate(document.getElementById("btn-home-new"), () => {
-  state.mode = "new";
-  resetDropScreen();
+  enterNewMode();
   show("screen-drop");
 });
 onActivate(document.getElementById("btn-home-manage"), () => {
@@ -1038,7 +1223,9 @@ document.getElementById("btn-list-back").addEventListener("click", (e) => {
 document.getElementById("list-body").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-action]");
   if (!btn) return;
-  console.log(btn.dataset.action, btn.dataset.slug);
+  const { action, slug } = btn.dataset;
+  if (action === "edit") startEdit(slug);
+  else if (action === "translate") startTranslate(slug);
 });
 
 document.getElementById("btn-continue").addEventListener("click", doConvert);
@@ -1051,13 +1238,25 @@ document.getElementById("btn-publish").addEventListener("click", doPublish);
 document.getElementById("btn-retry-push").addEventListener("click", doRetryPush);
 document.getElementById("f-author").addEventListener("input", scheduleAuthorCheck);
 document.getElementById("f-author").addEventListener("blur", renderAuthorStatus);
+document.getElementById("f-lang").addEventListener("change", () => {
+  if (state.mode === "translate") updateTranslateSlug();
+});
+document.getElementById("input-cover-replace").addEventListener("change", () => {
+  const input = document.getElementById("input-cover-replace");
+  const file = input.files[0];
+  input.value = "";
+  if (file) doReplaceCover(file);
+});
 
 document.getElementById("btn-restart").addEventListener("click", (e) => {
   e.preventDefault();
-  location.reload();
+  if (state.mode === "edit" || state.mode === "translate") exitToList();
+  else location.reload();
 });
 document.getElementById("btn-new-post").addEventListener("click", (e) => {
   e.preventDefault();
+  state.mode = "new";
+  state.translateInit = null;
   show("screen-home");
 });
 
