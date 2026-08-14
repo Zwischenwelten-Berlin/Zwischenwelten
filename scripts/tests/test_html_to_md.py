@@ -105,6 +105,25 @@ def test_metadata_with_ampersand_round_trips():
     assert diffs == []
 
 
+def test_foreign_div_is_dropped_not_absorbed_as_prose():
+    # A hand-built element that build_post never emits must not be silently
+    # folded into the recovered manuscript as prose — the whole point of
+    # dropping it is that the fidelity check then catches the page as
+    # unrecoverable (see test_backfill.test_unrecoverable_page_is_locked).
+    md = html_to_md.fragment_to_md(
+        '<p>Echter Text.</p><div class="podium">Handgebauter Sonderblock</div>')
+    assert "Handgebauter Sonderblock" not in md
+    assert md.strip() == "Echter Text."
+
+
+def test_table_wrap_div_still_passes_through():
+    md = html_to_md.fragment_to_md(
+        '<div class="table-wrap"><table><tr><th>A</th></tr>'
+        '<tr><td>1</td></tr></table></div>')
+    assert "| A |" in md
+    assert "| 1 |" in md
+
+
 def test_fragment_to_md_headings_and_bold():
     md = html_to_md.fragment_to_md(
         "<h1>Titel</h1><p><em>Unter</em></p><h2>Kapitel</h2>"

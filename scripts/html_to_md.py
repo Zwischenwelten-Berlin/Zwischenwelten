@@ -24,9 +24,20 @@ class _PageMDBuilder(_MDBuilder):
         super().__init__()
         self.cite = None          # [name_parts, role_parts] while inside <cite>
         self.cite_strong = False
+        # Depth counter for a <div> that build_post never emits (hand-built
+        # markup). Its content is not part of the known vocabulary, so it is
+        # dropped rather than absorbed as prose — a page containing one can
+        # never be reconstructed word-for-word and must come back "locked".
+        self.foreign_div_depth = 0
 
     def handle_starttag(self, tag, attrs):
-        if tag == "cite":
+        if self.foreign_div_depth:
+            if tag == "div":
+                self.foreign_div_depth += 1
+            return
+        if tag == "div" and dict(attrs).get("class") != "table-wrap":
+            self.foreign_div_depth = 1
+        elif tag == "cite":
             self.cite = ([], [])
         elif self.cite is not None and tag in ("strong", "b"):
             self.cite_strong = True
@@ -34,6 +45,10 @@ class _PageMDBuilder(_MDBuilder):
             super().handle_starttag(tag, attrs)
 
     def handle_endtag(self, tag):
+        if self.foreign_div_depth:
+            if tag == "div":
+                self.foreign_div_depth -= 1
+            return
         if tag == "cite":
             name = re.sub(r"\s+", " ", "".join(self.cite[0])).strip()
             role = re.sub(r"\s+", " ", "".join(self.cite[1])).strip(" ,–—-")
@@ -49,6 +64,8 @@ class _PageMDBuilder(_MDBuilder):
             super().handle_endtag(tag)
 
     def handle_data(self, data):
+        if self.foreign_div_depth:
+            return
         if self.cite is not None:
             self.cite[0 if self.cite_strong else 1].append(data)
         else:
