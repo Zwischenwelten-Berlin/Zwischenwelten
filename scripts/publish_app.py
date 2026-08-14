@@ -274,8 +274,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                        publish_args=None, cover_rel=None,
                        cover_path=_cover_path_for(slug))
         e = posts[slug]
-        self.send_json({"ok": True, "markdown": open(ms, encoding="utf-8").read(),
-                        "slug": slug, "cover": "/" + os.path.relpath(SESSION["cover_path"], publish_post.ROOT)
+        markdown = open(ms, encoding="utf-8").read()
+        # The registry never stores subtitle — recompute it from the
+        # manuscript, same as api_convert does for a fresh upload. A stored
+        # manuscript should always have a title line, but guard anyway so a
+        # malformed one degrades to no subtitle instead of a 500.
+        try:
+            _, subtitle, _ = publish_post.parse_md(markdown, e["lang"])
+        except PublishError:
+            subtitle = None
+        self.send_json({"ok": True, "markdown": markdown,
+                        "slug": slug, "subtitle": subtitle,
+                        "cover": "/" + os.path.relpath(SESSION["cover_path"], publish_post.ROOT)
                             if SESSION["cover_path"] else None,
                         "langs": {c: cfg["label"] for c, cfg in LANGS.items()},
                         **{k: e[k] for k in ("title", "lang", "date", "author",
@@ -284,8 +294,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def api_translation_init(self, body):
         slug = body["slug"]
         posts = publish_post.load_posts()["posts"]
-        if slug not in posts:
-            raise PublishError(f"'{slug}' ist nicht im Register.")
+        try:
+            if slug not in posts:
+                raise PublishError(f"'{slug}' ist nicht im Register.")
+        except PublishError as e:
+            # Caught locally, same as api_edit_load, so this method behaves
+            # the same whether reached via the HTTP dispatch or called
+            # directly, as the test harness does.
+            self.send_json({"ok": False, "error": str(e)})
+            return
         taken = {posts[slug]["lang"]} | {
             t["lang"] for t in posts.values() if t.get("original_slug") == slug}
         SESSION.update(mode="translate", translate_of=slug, edit_slug=None, preview=None,

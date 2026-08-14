@@ -51,6 +51,7 @@ def test_edit_load_returns_manuscript_and_meta(repo, cover):
     assert payload["markdown"] == MD
     assert payload["lang"] == "de"
     assert payload["slug"] == "ein-test"
+    assert payload["subtitle"] == "Der Untertitel"
     assert publish_app.SESSION["mode"] == "edit"
     assert os.path.exists(publish_app.SESSION["cover_path"])
 
@@ -75,6 +76,13 @@ def test_translation_init_lists_missing_langs(repo, cover):
     assert "de" not in payload["available_langs"]
     assert "tr" in payload["available_langs"]
     assert publish_app.SESSION["mode"] == "translate"
+
+
+def test_translation_init_unknown_slug_returns_error(repo, cover):
+    h = FakeHandler()
+    h.api_translation_init({"slug": "gibt-es-nicht"})
+    _, payload = h.sent
+    assert payload["ok"] is False
 
 
 def test_preview_in_translate_mode_forces_slug(repo, cover):
