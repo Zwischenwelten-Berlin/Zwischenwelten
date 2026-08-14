@@ -1,0 +1,112 @@
+{
+  "posts": {
+    "medienpreis-2026": {
+      "title": "Erster Zwischenwelten Medienpreis startet",
+      "lang": "de",
+      "date": "2026-07-16",
+      "author": "Süleyman Bağ",
+      "tag": "Medienpreis",
+      "highlight": "Medienpreis",
+      "alt": "Plakat des Zwischenwelten Medienpreis 2026: Meine Einheit. Deine Einheit. Keine Einheit? – Vielfalt, gesellschaftlicher Zusammenhalt und die Rolle der Medien",
+      "caption": "Zwischenwelten Medienpreis 2026 – „Meine Einheit. Deine Einheit. Keine Einheit?\"",
+      "original_slug": null,
+      "locked": true
+    },
+    "medienpreis-2026-ar": {
+      "title": "انطلاق الدورة الأولى لجائزة «بين العوالم» الإعلامية",
+      "lang": "ar",
+      "date": "2026-07-16",
+      "author": "Süleyman Bağ",
+      "tag": "الجائزة الإعلامية",
+      "highlight": "الإعلامية",
+      "alt": null,
+      "caption": null,
+      "original_slug": "medienpreis-2026",
+      "locked": false
+    },
+    "medienpreis-2026-en": {
+      "title": "First Zwischenwelten Media Award Launches",
+      "lang": "en",
+      "date": "2026-07-16",
+      "author": "Süleyman Bağ",
+      "tag": "Media Award",
+      "highlight": "Media Award",
+      "alt": "Poster of the Zwischenwelten Media Award 2026: My unity. Your unity. No unity?",
+      "caption": "Zwischenwelten Medienpreis 2026 – „Meine Einheit. Deine Einheit. Keine Einheit?\"",
+      "original_slug": "medienpreis-2026",
+      "locked": true
+    },
+    "medienpreis-2026-fa": {
+      "title": "نخستین دورهٔ جایزهٔ رسانه‌ای Zwischenwelten آغاز شد",
+      "lang": "fa",
+      "date": "2026-07-16",
+      "author": "Süleyman Bağ",
+      "tag": "Medienpreis",
+      "highlight": "رسانه‌ای",
+      "alt": null,
+      "caption": null,
+      "original_slug": "medienpreis-2026",
+      "locked": false
+    },
+    "medienpreis-2026-ku": {
+      "title": "Medyaya Zwischenwelten Dê Cara Ewil Xelatên Rojnamevanî Belav Dike",
+      "lang": "ku",
+      "date": "2026-07-16",
+      "author": "Süleyman Bağ",
+      "tag": "Xelata Medyayê",
+      "highlight": "Xelatên Rojnamevanî",
+      "alt": null,
+      "caption": null,
+      "original_slug": "medienpreis-2026",
+      "locked": false
+    },
+    "medienpreis-2026-ru": {
+      "title": "Стартует первая Медиапремия Zwischenwelten",
+      "lang": "ru",
+      "date": "2026-07-16",
+      "author": "Süleyman Bağ",
+      "tag": "Медиапремия",
+      "highlight": "Медиапремия",
+      "alt": "Плакат Медиапремии Zwischenwelten 2026: Моё единство. Твоё единство. Нет единства?",
+      "caption": "Zwischenwelten Medienpreis 2026 – „Meine Einheit. Deine Einheit. Keine Einheit?\"",
+      "original_slug": "medienpreis-2026",
+      "locked": true
+    },
+    "medienpreis-2026-tr": {
+      "title": "İlk Zwischenwelten Medya Ödülü Sahibini arıyor",
+      "lang": "tr",
+      "date": "2026-07-16",
+      "author": "Süleyman Bağ",
+      "tag": "Medya Ödülü",
+      "highlight": "Medya Ödülü",
+      "alt": "Zwischenwelten Medya Ödülü 2026 afişi: Benim birliğim. Senin birliğin. Birlik yok mu?",
+      "caption": "Zwischenwelten Medienpreis 2026 – „Meine Einheit. Deine Einheit. Keine Einheit?\"",
+      "original_slug": "medienpreis-2026",
+      "locked": true
+    },
+    "medienpreis-2026-uk": {
+      "title": "Стартує перша Медіапремія Zwischenwelten",
+      "lang": "uk",
+      "date": "2026-07-16",
+      "author": "Süleyman Bağ",
+      "tag": "Медіапремія",
+      "highlight": "Медіапремія",
+      "alt": "Плакат Медіапремії Zwischenwelten 2026: Моя єдність. Твоя єдність. Немає єдності?",
+      "caption": "Zwischenwelten Medienpreis 2026 – „Meine Einheit. Deine Einheit. Keine Einheit?\"",
+      "original_slug": "medienpreis-2026",
+      "locked": true
+    },
+    "wem-gehort-berlin": {
+      "title": "Wem gehört Berlin?",
+      "lang": "de",
+      "date": "2026-08-10",
+      "author": "Süleyman Bağ",
+      "tag": null,
+      "highlight": null,
+      "alt": null,
+      "caption": null,
+      "original_slug": null,
+      "locked": false
+    }
+  }
+}
