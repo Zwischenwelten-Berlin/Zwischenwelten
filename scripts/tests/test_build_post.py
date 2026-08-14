@@ -13,6 +13,19 @@ COVER_PNG = base64.b64decode(
     b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABh6FO1AAAAABJRU5ErkJggg=="
 )
 
+# 1x1 valid JPEG, used to exercise the update-with-new-extension path.
+COVER_JPG = base64.b64decode(
+    b"/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0"
+    b"Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy"
+    b"MjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQID"
+    b"AAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlq"
+    b"c3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3"
+    b"+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEI"
+    b"FEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImK"
+    b"kpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDi"
+    b"6KKK+ZP3E//Z"
+)
+
 MD = """# Ein Test
 
 *Der Untertitel*
@@ -163,3 +176,42 @@ def test_translation_skips_author_page(repo, cover, author_page):
 def test_no_author_page_is_fine(repo, cover):
     r = publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
     assert r["author_page"] is None
+
+
+def test_update_replaces_page_and_card(repo, cover, author_page):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    changed = MD.replace("Erster Absatz", "Geänderter Absatz")
+    r = publish_post.build_post(changed, None, lang="de", date="2026-08-03",
+                                slug="ein-test", update=True, write=True)
+    page = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
+    assert "Geänderter Absatz" in page
+    index = (repo / "aktuelles" / "index.html").read_text(encoding="utf-8")
+    assert index.count('href="/aktuelles/ein-test"') == 1
+    author_html = author_page.read_text(encoding="utf-8")
+    assert author_html.count('href="/aktuelles/ein-test"') == 1
+    ms = (repo / "assets" / "blog" / "manuscripts" / "ein-test.md").read_text(encoding="utf-8")
+    assert "Geänderter Absatz" in ms
+    assert r["cover_rel"] == "/assets/blog/ein-test-cover.png"  # kept
+
+
+def test_update_with_new_cover_replaces_file(repo, cover, tmp_path):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    jpg = tmp_path / "neu.jpg"
+    jpg.write_bytes(COVER_JPG)
+    r = publish_post.build_post(MD, str(jpg), lang="de", date="2026-08-03",
+                                slug="ein-test", update=True, write=True)
+    assert r["cover_rel"] == "/assets/blog/ein-test-cover.jpg"
+    assert not (repo / "assets" / "blog" / "ein-test-cover.png").exists()
+    assert "assets/blog/ein-test-cover.png" in r["files"]  # staged deletion
+
+
+def test_update_requires_existing_post(repo, cover):
+    with pytest.raises(publish_post.PublishError):
+        publish_post.build_post(MD, cover, lang="de", date="2026-08-03",
+                                slug="gibt-es-nicht", update=True, write=True)
+
+
+def test_new_post_still_refuses_existing_slug(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    with pytest.raises(publish_post.PublishError):
+        publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)

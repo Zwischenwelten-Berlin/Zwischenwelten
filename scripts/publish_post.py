@@ -16,6 +16,7 @@ Run with --help for all options.
 
 import argparse
 import difflib
+import glob
 import html as htmllib
 import json
 import os
@@ -677,10 +678,19 @@ def add_card(index_html, card):
     return index_html.replace(anchor, anchor + "\n" + card, 1)
 
 
+def replace_card(index_html, card, slug):
+    existing = re.search(
+        rf'[ \t]*<a class="post-card" href="/aktuelles/{re.escape(slug)}".*?</a>\n',
+        index_html, re.S)
+    if not existing:
+        return add_card(index_html, card)
+    return index_html[:existing.start()] + card + index_html[existing.end():]
+
+
 # --------------------------------------------------------------------------
 def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None,
                highlight=None, alt=None, caption=None, subtitle_from="auto",
-               new_author=False, write=False, original_slug=None):
+               new_author=False, write=False, original_slug=None, update=False):
     """Build (and optionally write) a blog post from a manuscript + cover image.
 
     Raises PublishError on any failure. Returns a dict describing the post;
@@ -727,14 +737,43 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
 
     post_slug = slug or slugify(title)
     page_path = os.path.join(POSTS_DIR, post_slug + ".html")
-    if write and os.path.exists(page_path):
+
+    if update:
+        if slug is None:
+            raise PublishError("Update braucht einen --slug.")
+        registry_posts = load_posts()["posts"]
+        if slug not in registry_posts or not os.path.exists(page_path):
+            raise PublishError(f"'{slug}' ist nicht im Register — nur veröffentlichte "
+                               f"Beiträge können aktualisiert werden.")
+        if registry_posts[slug].get("locked"):
+            raise PublishError(f"'{slug}' ist gesperrt (Seite mit handgebauten Elementen) "
+                               f"und kann nicht im Editor bearbeitet werden.")
+        original_slug = original_slug or registry_posts[slug].get("original_slug")
+    elif write and os.path.exists(page_path):
         raise PublishError(f"{page_path} already exists. Pass a different --slug.")
 
     # ---- cover ------------------------------------------------------------
-    ext = os.path.splitext(image_path)[1].lower() or ".jpg"
-    cover_rel = f"/assets/blog/{post_slug}-cover{ext}"
-    w, h = image_size(image_path)
-    dims = f' width="{w}" height="{h}"' if w and h else ""
+    old_cover_path = None
+    if image_path is None:
+        if not update:
+            raise PublishError("image_path fehlt (nur bei --update optional).")
+        matches = glob.glob(os.path.join(IMG_DIR, f"{post_slug}-cover.*"))
+        if not matches:
+            raise PublishError(f"Kein bestehendes Cover für '{post_slug}' gefunden.")
+        existing_cover = matches[0]
+        ext = os.path.splitext(existing_cover)[1].lower()
+        cover_rel = f"/assets/blog/{post_slug}-cover{ext}"
+        w, h = image_size(existing_cover)
+        dims = f' width="{w}" height="{h}"' if w and h else ""
+    else:
+        ext = os.path.splitext(image_path)[1].lower() or ".jpg"
+        cover_rel = f"/assets/blog/{post_slug}-cover{ext}"
+        w, h = image_size(image_path)
+        dims = f' width="{w}" height="{h}"' if w and h else ""
+        if update:
+            existing = glob.glob(os.path.join(IMG_DIR, f"{post_slug}-cover.*"))
+            if existing and os.path.splitext(existing[0])[1].lower() != ext:
+                old_cover_path = existing[0]
 
     # ---- assemble ---------------------------------------------------------
     y, mo, d = (int(x) for x in date.split("-"))
@@ -789,6 +828,8 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
     ]
     if author_new:
         files.append(os.path.relpath(AUTHORS, ROOT))
+    if old_cover_path:
+        files.append(os.path.relpath(old_cover_path, ROOT))
 
     # ---- author page --------------------------------------------------------
     # Translations never get a card on the author page; only the original does.
@@ -803,11 +844,14 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         # ---- write ----------------------------------------------------------
         with open(page_path, "w", encoding="utf-8") as fh:
             fh.write(page)
-        shutil.copyfile(image_path, os.path.join(IMG_DIR, f"{post_slug}-cover{ext}"))
+        if image_path is not None:
+            shutil.copyfile(image_path, os.path.join(IMG_DIR, f"{post_slug}-cover{ext}"))
+        if old_cover_path:
+            os.remove(old_cover_path)
 
         index_html = open(INDEX, encoding="utf-8").read()
         index_html, chip_added = add_chip(index_html, lang)
-        index_html = add_card(index_html, card)
+        index_html = replace_card(index_html, card, post_slug) if update else add_card(index_html, card)
         with open(INDEX, "w", encoding="utf-8") as fh:
             fh.write(index_html)
 
@@ -854,7 +898,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--md", required=True, help="manuscript (.md)")
-    ap.add_argument("--image", required=True, help="cover image (jpg/png)")
+    ap.add_argument("--image", required=False, help="cover image (jpg/png)")
     ap.add_argument("--lang", required=True, choices=sorted(LANGS), help="language of the manuscript")
     ap.add_argument("--date", required=True, help="publication date, YYYY-MM-DD")
     ap.add_argument("--author", help="author name; default: byline found in the manuscript")
@@ -866,11 +910,16 @@ def main():
     ap.add_argument("--subtitle-from", default="auto", choices=["auto", "italic", "heading", "none"])
     ap.add_argument("--new-author", action="store_true",
                     help="register the author as a new person instead of matching an existing one")
+    ap.add_argument("--update", action="store_true",
+                    help="edit an already-published post in place instead of creating a new one")
     ap.add_argument("--dry-run", action="store_true", help="report only, write nothing")
     args = ap.parse_args()
 
+    if not args.image and not args.update:
+        die("--image is required unless --update is given.")
+
     for p in (args.md, args.image):
-        if not os.path.exists(p):
+        if p and not os.path.exists(p):
             die(f"File not found: {p}")
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
         die("--date must look like 2026-07-20.")
@@ -882,7 +931,7 @@ def main():
                        author=args.author, slug=args.slug, tag=args.tag,
                        highlight=args.highlight, alt=args.alt, caption=args.caption,
                        subtitle_from=args.subtitle_from, new_author=args.new_author,
-                       write=not args.dry_run)
+                       write=not args.dry_run, update=args.update)
     except PublishError as e:
         if e.diffs:
             print("\n✗ The generated page does not match the manuscript word for word:")
@@ -891,11 +940,12 @@ def main():
             die("Nothing was written. Fix the converter or the manuscript and retry.")
         die(str(e))
 
-    ext = os.path.splitext(args.image)[1].lower() or ".jpg"
+    ext = os.path.splitext(r["cover_rel"])[1].lower() or ".jpg"
 
     if args.dry_run:
         print(f"\n[dry run] would write {os.path.join(POSTS_DIR, r['slug'] + '.html')}")
-        print(f"[dry run] would copy  {args.image} → {IMG_DIR}/{r['slug']}-cover{ext}")
+        if args.image:
+            print(f"[dry run] would copy  {args.image} → {IMG_DIR}/{r['slug']}-cover{ext}")
         print(f"[dry run] would add a {LANGS[args.lang]['label']} card to aktuelles/index.html")
         return
 
