@@ -30,7 +30,23 @@ POSTS_DIR = os.path.join(ROOT, "aktuelles")
 INDEX = os.path.join(POSTS_DIR, "index.html")
 IMG_DIR = os.path.join(ROOT, "assets", "blog")
 AUTHORS = os.path.join(IMG_DIR, "authors.json")
+MANUSCRIPTS_DIR = os.path.join(IMG_DIR, "manuscripts")
+POSTS_JSON = os.path.join(IMG_DIR, "posts.json")
 SITE = "https://zwischenwelten-berlin.de"
+
+
+def load_posts():
+    if not os.path.exists(POSTS_JSON):
+        return {"posts": {}}
+    with open(POSTS_JSON, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def save_posts(registry):
+    with open(POSTS_JSON, "w", encoding="utf-8") as fh:
+        json.dump(registry, fh, ensure_ascii=False, indent=2)
+        fh.write("\n")
+
 
 # --------------------------------------------------------------------------
 # Language table. Every string here is site chrome, never manuscript content.
@@ -632,7 +648,7 @@ def add_card(index_html, card):
 # --------------------------------------------------------------------------
 def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None,
                highlight=None, alt=None, caption=None, subtitle_from="auto",
-               new_author=False, write=False):
+               new_author=False, write=False, original_slug=None):
     """Build (and optionally write) a blog post from a manuscript + cover image.
 
     Raises PublishError on any failure. Returns a dict describing the post;
@@ -734,6 +750,8 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         os.path.relpath(page_path, ROOT),
         os.path.relpath(os.path.join(IMG_DIR, f"{post_slug}-cover{ext}"), ROOT),
         os.path.relpath(INDEX, ROOT),
+        os.path.relpath(os.path.join(MANUSCRIPTS_DIR, post_slug + ".md"), ROOT),
+        os.path.relpath(POSTS_JSON, ROOT),
     ]
     if author_new:
         files.append(os.path.relpath(AUTHORS, ROOT))
@@ -750,6 +768,19 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         index_html = add_card(index_html, card)
         with open(INDEX, "w", encoding="utf-8") as fh:
             fh.write(index_html)
+
+        os.makedirs(MANUSCRIPTS_DIR, exist_ok=True)
+        with open(os.path.join(MANUSCRIPTS_DIR, post_slug + ".md"), "w",
+                  encoding="utf-8") as fh:
+            fh.write(md_text)
+        posts_registry = load_posts()
+        posts_registry["posts"][post_slug] = {
+            "title": title, "lang": lang, "date": date,
+            "author": author_canonical or author_display,
+            "tag": tag, "highlight": highlight, "alt": alt, "caption": caption,
+            "original_slug": original_slug, "locked": False,
+        }
+        save_posts(posts_registry)
 
         if author_new:
             with open(AUTHORS, "w", encoding="utf-8") as fh:
