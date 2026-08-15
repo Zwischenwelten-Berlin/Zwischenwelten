@@ -11,6 +11,7 @@ runs before anything is written.
 """
 
 import base64
+import binascii
 import glob
 import http.server
 import json
@@ -132,9 +133,15 @@ def git_flow(files, msg):
     """Shared pull/add/commit/push sequence, built from `_pull` and
     `_add_commit_push`. Returns (ok, stage, log) where stage is "" on
     success and one of "pull"/"add"/"commit"/"push" on failure; log is the
-    joined command transcript (see `_pull` for the "pull" stage's warning
-    marker). Used directly by api_new_author, whose files are written to
-    disk before this is called.
+    joined command transcript. Used directly by api_new_author, whose
+    files are written to disk before this is called.
+
+    Unlike api_publish (which has its own "pull" error text to fold
+    `split_pull_warning`'s suffix into, and so keeps the sentinel-bearing
+    raw log around just long enough to split it), git_flow has no separate
+    error-text field — its `log` *is* the whole story shown to the caller
+    — so the sentinel is resolved into plain, human-readable text here and
+    never returned to a caller.
 
     api_publish calls `_pull`/`_add_commit_push` itself instead of this
     function — it needs `build_post`'s write to happen *between* the pull
@@ -144,7 +151,10 @@ def git_flow(files, msg):
     """
     log = []
     if not _pull(log):
-        return False, "pull", "\n\n".join(log)
+        out, warn = split_pull_warning("\n\n".join(log))
+        if warn:
+            out += "\n\n" + warn.strip()
+        return False, "pull", out
     stage = _add_commit_push(files, msg, log)
     if stage:
         return False, stage, "\n\n".join(log)
@@ -575,6 +585,25 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 raise PublishError(
                     f"'{name}' ist bereits als '{entry['canonical']}' registriert.")
             author_id = publish_post.slugify(name)
+
+            # Validate everything about an attached page *before* writing
+            # anything. authors.json must never gain an entry for an
+            # author whose page turned out to be un-renderable (bad
+            # extension, broken base64) — that would leave them
+            # permanently half-registered, since a retry would just hit
+            # the "already registered" refusal above with no way back in.
+            page = body.get("page")
+            photo_bytes = photo_ext = None
+            if page:
+                photo_ext = (page.get("photo_ext") or ".png").lower()
+                if photo_ext not in (".png", ".jpg", ".jpeg"):
+                    raise PublishError("Autorenfoto muss .png oder .jpg sein.")
+                try:
+                    photo_bytes = base64.b64decode(page["photo_b64"], validate=True)
+                except (KeyError, TypeError, ValueError, binascii.Error):
+                    raise PublishError(
+                        "Autorenfoto fehlt oder ist beschädigt — bitte erneut auswählen.")
+
             registry["authors"].append({
                 "id": author_id, "canonical": name, "role": role,
                 "names": body.get("names") or {}, "aliases": body.get("aliases") or [],
@@ -584,16 +613,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 fh.write("\n")
             files = [os.path.relpath(publish_post.AUTHORS, publish_post.ROOT)]
 
-            page = body.get("page")
             if page:
-                ext = (page.get("photo_ext") or ".png").lower()
-                if ext not in (".png", ".jpg", ".jpeg"):
-                    raise PublishError("Autorenfoto muss .png oder .jpg sein.")
                 photo_dir = os.path.join(publish_post.ROOT, "assets", "autoren")
                 os.makedirs(photo_dir, exist_ok=True)
-                photo_path = os.path.join(photo_dir, author_id + ext)
+                photo_path = os.path.join(photo_dir, author_id + photo_ext)
                 with open(photo_path, "wb") as fh:
-                    fh.write(base64.b64decode(page["photo_b64"]))
+                    fh.write(photo_bytes)
                 photo_rel = "/" + os.path.relpath(photo_path, publish_post.ROOT)
                 bio_paras = [p.strip() for p in (page.get("bio") or "").split("\n\n")]
                 html = publish_post.render_author_page(name, role, bio_paras, photo_rel)

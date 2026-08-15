@@ -151,3 +151,59 @@ def test_new_author_refuses_known_person(repo, monkeypatch):
     _, payload = h.sent
     assert not payload["ok"]
     assert "Süleyman Bağ" in payload["error"]
+
+
+def test_new_author_rejects_bad_photo_ext_without_registering(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    before = (repo / "assets" / "blog" / "authors.json").read_text()
+    h = FakeHandler()
+    h.api_new_author({"canonical": "Ayşe Örnek", "role": "Journalistin",
+                      "page": {"bio": "Absatz eins.", "photo_b64": COVER_PNG_B64,
+                               "photo_ext": ".gif"}})
+    _, payload = h.sent
+    assert not payload["ok"]
+    after = (repo / "assets" / "blog" / "authors.json").read_text()
+    assert before == after
+    assert not (repo / "journalistennetzwerk" / "ayse-ornek.html").exists()
+
+
+def test_new_author_missing_photo_b64_gives_german_error(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    before = (repo / "assets" / "blog" / "authors.json").read_text()
+    h = FakeHandler()
+    h.api_new_author({"canonical": "Ayşe Örnek", "role": "Journalistin",
+                      "page": {"bio": "Absatz eins.", "photo_ext": ".png"}})
+    _, payload = h.sent
+    assert not payload["ok"]
+    assert "foto" in payload["error"].lower()
+    after = (repo / "assets" / "blog" / "authors.json").read_text()
+    assert before == after
+
+
+def test_new_author_broken_photo_b64_gives_german_error(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    before = (repo / "assets" / "blog" / "authors.json").read_text()
+    h = FakeHandler()
+    h.api_new_author({"canonical": "Ayşe Örnek", "role": "Journalistin",
+                      "page": {"bio": "Absatz eins.", "photo_b64": "not-valid-base64!!",
+                               "photo_ext": ".png"}})
+    _, payload = h.sent
+    assert not payload["ok"]
+    assert "foto" in payload["error"].lower()
+    after = (repo / "assets" / "blog" / "authors.json").read_text()
+    assert before == after
+
+
+def test_git_flow_pull_failure_log_has_no_raw_sentinel(monkeypatch):
+    def fake_run_git(*args):
+        if args[0] == "pull":
+            return 1, "pull failed output"
+        if args[:2] == ("rebase", "--abort"):
+            return 1, "abort also failed"
+        return 0, ""
+    monkeypatch.setattr(publish_app, "run_git", fake_run_git)
+    monkeypatch.setattr(publish_app, "_rebase_in_progress", lambda: True)
+    ok, stage, log = publish_app.git_flow(["f.txt"], "msg")
+    assert not ok and stage == "pull"
+    assert "\x00" not in log
+    assert "Außerdem konnte der Rebase" in log

@@ -225,8 +225,18 @@ def test_render_author_page(repo):
     assert "<p>Absatz eins.</p>" in html
     assert '<div class="posts-grid">' in html
     assert "Süleyman" not in html
+    # no leftover Süleyman-specific photo crop — every new author gets a
+    # normal headshot, not a zoomed-in TV-still crop.
+    assert "transform:scale(2.6)" not in html
     # the generated grid must accept cards
     card = publish_post.AUTHOR_CARD.format(
         slug="x", cover="/c.png", dims="", alt="", iso_date="2026-01-01",
         date_label="1. Januar 2026", title_plain="X", excerpt="", read_more="Weiterlesen")
     assert "/aktuelles/x" in publish_post.upsert_author_card(html, card, "x")
+
+
+def test_render_author_page_escapes_quotes_in_attributes(repo):
+    html = publish_post.render_author_page(
+        'Foo "Bar" Baz', "Journalist", ["Bio."], "/assets/autoren/x.png")
+    assert 'alt="Foo &quot;Bar&quot; Baz"' in html
+    assert '"Bar"' not in html

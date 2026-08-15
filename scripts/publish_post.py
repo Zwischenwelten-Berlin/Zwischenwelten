@@ -621,10 +621,20 @@ def render_author_page(name, role, bio_paragraphs, photo_rel):
     tpl = open(AUTHOR_PAGE_TEMPLATE, encoding="utf-8").read()
     bio_html = "\n                  ".join(
         f"<p>{esc(p)}</p>" for p in bio_paragraphs if p.strip())
-    for key, val in [("__NAME__", esc(name)), ("__ROLE__", esc(role)),
-                     ("__PHOTO__", photo_rel), ("__BIO__", bio_html),
-                     ("__DESCRIPTION__",
-                      esc(f"{name} – {role}. Porträt und Beiträge auf ZWISCHENWELTEN."))]:
+    # __NAME__ lands in the photo's alt="..." (and __DESCRIPTION__ in a
+    # meta content="...") as well as in plain text — esc() alone leaves
+    # embedded double quotes unescaped (quote=False), which would break
+    # those attributes, so both also get the same '"' -> '&quot;' pass
+    # build_post's own PAGE template uses for its attribute values.
+    for key, val in [
+        ("__NAME__", esc(name).replace('"', "&quot;")),
+        ("__ROLE__", esc(role)),
+        ("__PHOTO__", photo_rel),
+        ("__BIO__", bio_html),
+        ("__DESCRIPTION__",
+         esc(f"{name} – {role}. Porträt und Beiträge auf ZWISCHENWELTEN.")
+         .replace('"', "&quot;")),
+    ]:
         tpl = tpl.replace(key, val)
     return tpl
 
