@@ -800,6 +800,10 @@ async function doConvert() {
       manuscript_name: state.manuscript.name,
       manuscript_b64: await fileToB64(state.manuscript),
     };
+    // Explicit assertion so the server only keeps a stale translate-mode
+    // session alive when we actually mean it — otherwise an abandoned or
+    // already-published translation would leak into the next fresh convert.
+    if (state.mode === "translate") payload.translate = true;
     // In translate mode the cover is optional (inherited from the original)
     // — only attach it if the editor actually picked one to override it.
     if (state.cover) {
@@ -929,7 +933,17 @@ async function submitNewAuthor() {
     photoInput.value = "";
     document.getElementById("f-author").value = r.canonical;
     document.getElementById("f-new-author").checked = false;
-    renderAuthorStatus();
+    // renderAuthorStatus() overwrites #author-warn with the "known author"
+    // status — await it before showing a git-failure warning of our own,
+    // so ours isn't clobbered by that async round-trip.
+    await renderAuthorStatus();
+    if (!r.committed) {
+      const warnEl = document.getElementById("author-warn");
+      const warnText = document.getElementById("author-warn-text");
+      warnEl.hidden = false;
+      warnText.textContent = "Autor:in registriert, aber Git-Push fehlgeschlagen — Details: "
+        + r.git_output;
+    }
   } catch (e) {
     errEl.textContent = "Netzwerkfehler: " + (e && e.message ? e.message : e);
     errEl.hidden = false;

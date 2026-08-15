@@ -876,7 +876,13 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         with open(page_path, "w", encoding="utf-8") as fh:
             fh.write(page)
         if image_path is not None:
-            shutil.copyfile(image_path, os.path.join(IMG_DIR, f"{post_slug}-cover{ext}"))
+            cover_dest = os.path.join(IMG_DIR, f"{post_slug}-cover{ext}")
+            # image_path can legitimately be the repo's own cover file
+            # (e.g. an edit-mode publish that inherits the untouched cover)
+            # — copying a file onto itself raises shutil.SameFileError, so
+            # skip the copy in that case instead of crashing mid-write.
+            if not (os.path.exists(cover_dest) and os.path.samefile(image_path, cover_dest)):
+                shutil.copyfile(image_path, cover_dest)
         if old_cover_path:
             os.remove(old_cover_path)
 

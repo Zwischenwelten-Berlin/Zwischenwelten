@@ -205,6 +205,21 @@ def test_update_with_new_cover_replaces_file(repo, cover, tmp_path):
     assert "assets/blog/ein-test-cover.png" in r["files"]  # staged deletion
 
 
+def test_update_with_image_path_same_as_existing_cover_does_not_raise(repo, cover):
+    # Regression for C1: passing the repo's own cover file back in as
+    # image_path (as the app's edit-publish path can do) must not blow up
+    # with shutil.SameFileError mid-write.
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    existing_cover = str(repo / "assets" / "blog" / "ein-test-cover.png")
+    changed = MD.replace("Erster Absatz", "Geänderter Absatz")
+    r = publish_post.build_post(changed, existing_cover, lang="de", date="2026-08-03",
+                                slug="ein-test", update=True, write=True)
+    page = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
+    assert "Geänderter Absatz" in page
+    assert os.path.exists(existing_cover)
+    assert r["cover_rel"] == "/assets/blog/ein-test-cover.png"
+
+
 def test_update_requires_existing_post(repo, cover):
     with pytest.raises(publish_post.PublishError):
         publish_post.build_post(MD, cover, lang="de", date="2026-08-03",

@@ -24,7 +24,7 @@ class FakeHandler(publish_app.Handler):
 def clean_session():
     publish_app.SESSION.update(cover_path=None, cover_rel=None, preview=None,
                                publish_args=None, mode="new", translate_of=None,
-                               edit_slug=None)
+                               edit_slug=None, cover_is_repo=False)
 
 
 def published(repo, cover):
@@ -95,6 +95,42 @@ def test_preview_in_translate_mode_forces_slug(repo, cover):
     _, payload = h.sent
     assert payload["ok"] and payload["fidelity_ok"]
     assert payload["slug"] == "ein-test-tr"
+
+
+def test_edit_publish_without_cover_replacement_does_not_crash(repo, cover):
+    # Regression for C1: edit-mode publish without touching the cover must
+    # not try to shutil.copyfile the repo cover onto itself.
+    published(repo, cover)
+    h = FakeHandler()
+    h.api_edit_load({"slug": "ein-test"})
+    changed = MD.replace("Erster Absatz", "Geänderter Absatz")
+    h.api_preview({"markdown": changed, "lang": "de", "date": "2026-08-03"})
+    _, payload = h.sent
+    assert payload["ok"] and payload["fidelity_ok"], payload
+
+    cover_path = repo / "assets" / "blog" / "ein-test-cover.png"
+    assert cover_path.exists()
+    r = publish_post.build_post(**publish_app.SESSION["publish_args"], write=True)
+    assert cover_path.exists()
+    assert r["cover_rel"] == "/assets/blog/ein-test-cover.png"
+    page = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
+    assert "Geänderter Absatz" in page
+
+
+def test_translate_still_copies_inherited_cover_to_new_slug(repo, cover):
+    # The C1 fix must not break translate mode: the inherited cover has to
+    # be COPIED to the new slug's cover file, not passed through as None.
+    published(repo, cover)
+    h = FakeHandler()
+    h.api_translation_init({"slug": "ein-test"})
+    h.api_preview({"markdown": MD, "lang": "tr", "date": "2026-08-05"})
+    _, payload = h.sent
+    assert payload["ok"] and payload["fidelity_ok"], payload
+    assert publish_app.SESSION["publish_args"]["image_path"] is not None
+
+    r = publish_post.build_post(**publish_app.SESSION["publish_args"], write=True)
+    assert (repo / "assets" / "blog" / "ein-test-tr-cover.png").exists()
+    assert r["cover_rel"] == "/assets/blog/ein-test-tr-cover.png"
 
 
 def test_replace_cover_swaps_session_cover_and_invalidates_preview(repo, cover):
@@ -243,6 +279,88 @@ def test_html_to_md_preserves_structure_markers():
     assert "## Zwischentitel" in md
     assert "- eins" in md
     assert "> Ein schönes Zitat." in md
+
+
+def _convert_body(**extra):
+    body = {"manuscript_name": "post.md",
+            "manuscript_b64": base64.b64encode(MD.encode()).decode()}
+    body.update(extra)
+    return body
+
+
+def test_convert_without_translate_flag_resets_leaked_translate_mode(repo, cover):
+    # Regression for C2: an abandoned/completed translation must not leak
+    # into the next "Neuer Beitrag" convert.
+    published(repo, cover)
+    h = FakeHandler()
+    h.api_translation_init({"slug": "ein-test"})
+    assert publish_app.SESSION["mode"] == "translate"
+
+    h.api_convert(_convert_body(
+        cover_name="cover.jpg",
+        cover_b64=base64.b64encode(b"fake-cover-bytes").decode()))
+    _, payload = h.sent
+    assert payload["ok"], payload
+    assert publish_app.SESSION["mode"] == "new"
+    assert publish_app.SESSION["translate_of"] is None
+    assert publish_app.SESSION["edit_slug"] is None
+
+    h2 = FakeHandler()
+    h2.api_preview({"markdown": MD, "lang": "de", "date": "2026-08-05",
+                    "slug": "frischer-slug"})
+    _, payload2 = h2.sent
+    assert payload2["ok"] and payload2["fidelity_ok"], payload2
+    assert payload2["slug"] == "frischer-slug"  # not force-overridden
+
+
+def test_convert_with_translate_flag_preserves_translate_mode(repo, cover):
+    published(repo, cover)
+    h = FakeHandler()
+    h.api_translation_init({"slug": "ein-test"})
+    h.api_convert(_convert_body(translate=True))
+    _, payload = h.sent
+    assert payload["ok"], payload
+    assert publish_app.SESSION["mode"] == "translate"
+    assert publish_app.SESSION["translate_of"] == "ein-test"
+
+    h2 = FakeHandler()
+    h2.api_preview({"markdown": MD, "lang": "tr", "date": "2026-08-05",
+                    "slug": "ignoriert"})
+    _, payload2 = h2.sent
+    assert payload2["ok"] and payload2["fidelity_ok"], payload2
+    assert payload2["slug"] == "ein-test-tr"
+
+
+def test_publish_success_resets_translate_mode(repo, cover, monkeypatch):
+    published(repo, cover)
+    monkeypatch.setattr(publish_app, "_pull", lambda log: True)
+    monkeypatch.setattr(publish_app, "_add_commit_push", lambda files, msg, log: "")
+    h = FakeHandler()
+    h.api_translation_init({"slug": "ein-test"})
+    h.api_preview({"markdown": MD, "lang": "tr", "date": "2026-08-05"})
+    _, payload = h.sent
+    assert payload["ok"] and payload["fidelity_ok"], payload
+
+    h.api_publish()
+    _, payload = h.sent
+    assert payload["ok"], payload
+    assert publish_app.SESSION["mode"] == "new"
+    assert publish_app.SESSION["translate_of"] is None
+    assert publish_app.SESSION["edit_slug"] is None
+    assert publish_app.SESSION["cover_is_repo"] is False
+
+
+def test_origin_allowed_no_origin_header():
+    assert publish_app._origin_allowed({})
+
+
+def test_origin_allowed_matching_localhost_origins():
+    assert publish_app._origin_allowed({"Origin": "http://localhost:8765"})
+    assert publish_app._origin_allowed({"Origin": "http://127.0.0.1:8765"})
+
+
+def test_origin_allowed_rejects_foreign_origin():
+    assert not publish_app._origin_allowed({"Origin": "https://evil.example"})
 
 
 def test_git_flow_pull_failure_log_has_no_raw_sentinel(monkeypatch):

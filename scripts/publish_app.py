@@ -37,8 +37,29 @@ APP_HTML = os.path.join(os.path.dirname(os.path.abspath(__file__)), "publish_app
 # mode is one of "new" (fresh manuscript), "edit" (editing an existing post,
 # slug/lang immutable), or "translate" (new-language version of an original,
 # slug forced to f"{translate_of}-{lang}").
+# cover_is_repo marks that cover_path points straight at a post's existing
+# repo cover file (set by api_edit_load/api_translation_init when they load
+# it), as opposed to a freshly uploaded temp file — see api_preview, which
+# must not pass that path back into build_post as image_path in edit mode
+# (copying the repo cover onto itself raises shutil.SameFileError).
 SESSION = {"cover_path": None, "cover_rel": None, "preview": None, "publish_args": None,
-           "mode": "new", "translate_of": None, "edit_slug": None}
+           "mode": "new", "translate_of": None, "edit_slug": None, "cover_is_repo": False}
+
+
+# Origins allowed to hit the state-changing POST endpoints. Guards against a
+# cross-origin page silently triggering a real commit+push (text/plain POSTs
+# avoid CORS preflight, so the browser won't block them on its own).
+ALLOWED_ORIGINS = {"http://localhost:8765", "http://127.0.0.1:8765"}
+
+
+def _origin_allowed(headers):
+    """True unless `headers` carries an Origin that isn't ours.
+
+    No Origin header at all (curl, the test harness, same-process calls) is
+    allowed — only a *present but foreign* Origin is rejected.
+    """
+    origin = headers.get("Origin")
+    return not origin or origin in ALLOWED_ORIGINS
 
 
 def _cover_path_for(slug):
@@ -249,6 +270,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     # ---- POST -------------------------------------------------------------
     def do_POST(self):
+        if not _origin_allowed(self.headers):
+            self.send_json({"ok": False,
+                            "error": "Anfrage von einem fremden Origin wurde abgelehnt."}, status=403)
+            return
         try:
             body = self.read_body()
             if self.path == "/api/convert":
@@ -287,11 +312,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # let a stale draft be published after a fresh conversion. A fresh
         # (non-translate) convert also invalidates any prior edit/translate
         # session; a translation's manuscript, however, arrives via convert
-        # too, so translate mode (and its original's cover) must survive.
+        # too, so translate mode (and its original's cover) must survive —
+        # but only when the client explicitly asserts it's still in translate
+        # mode (body["translate"]). Without that assertion, an abandoned or
+        # already-published translation must not leak into the next "Neuer
+        # Beitrag": the client only ever sends the flag while
+        # state.mode === "translate", so its absence means the session's
+        # stale mode is exactly that — stale — and gets reset here.
         SESSION["preview"] = None
         SESSION["publish_args"] = None
-        if SESSION["mode"] != "translate":
-            SESSION.update(mode="new", translate_of=None, edit_slug=None)
+        if not (SESSION["mode"] == "translate" and body.get("translate")):
+            SESSION.update(mode="new", translate_of=None, edit_slug=None, cover_is_repo=False)
         md, warnings = load_manuscript(body["manuscript_name"],
                                        base64.b64decode(body["manuscript_b64"]))
         # cover -> temp file, remember the future URL for the preview. In
@@ -305,6 +336,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             fd, SESSION["cover_path"] = tempfile.mkstemp(suffix=cover_ext)
             with os.fdopen(fd, "wb") as fh:
                 fh.write(base64.b64decode(body["cover_b64"]))
+            SESSION["cover_is_repo"] = False
 
         lang = detect_lang(md)
         title = subtitle = None
@@ -379,7 +411,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         SESSION.update(mode="edit", translate_of=None, edit_slug=slug, preview=None,
                        publish_args=None, cover_rel=None,
-                       cover_path=_cover_path_for(slug))
+                       cover_path=_cover_path_for(slug), cover_is_repo=True)
         e = posts[slug]
         markdown = open(ms, encoding="utf-8").read()
         # The registry never stores subtitle — recompute it from the
@@ -414,7 +446,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             t["lang"] for t in posts.values() if t.get("original_slug") == slug}
         SESSION.update(mode="translate", translate_of=slug, edit_slug=None, preview=None,
                        publish_args=None, cover_rel=None,
-                       cover_path=_cover_path_for(slug))
+                       cover_path=_cover_path_for(slug), cover_is_repo=True)
         self.send_json({"ok": True, "original": dict(posts[slug], slug=slug),
                         "author": posts[slug]["author"],
                         "cover": "/" + os.path.relpath(SESSION["cover_path"], publish_post.ROOT)
@@ -436,6 +468,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         fd, SESSION["cover_path"] = tempfile.mkstemp(suffix=cover_ext)
         with os.fdopen(fd, "wb") as fh:
             fh.write(base64.b64decode(body["cover_b64"]))
+        SESSION["cover_is_repo"] = False
         # A new cover invalidates any existing preview/publish state — the
         # page HTML embeds the old cover's URL, so it must be regenerated.
         SESSION["cover_rel"] = None
@@ -481,8 +514,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             body["slug"] = f"{SESSION['translate_of']}-{body['lang']}"
         elif SESSION["mode"] == "edit":
             body["slug"] = SESSION["edit_slug"]
+        # In edit mode, an untouched repo cover must NOT be passed through as
+        # image_path — build_post's write path would shutil.copyfile it onto
+        # itself (C1). update=True already treats image_path=None as "keep
+        # the existing cover", so substitute that here. Translate mode must
+        # keep passing the real path: the inherited cover has to be copied
+        # to the *new* slug's cover file, and image_path=None would be
+        # illegal there anyway (only --update accepts it).
+        cover_for_build = (
+            None if (SESSION["mode"] == "edit" and SESSION.get("cover_is_repo"))
+            else SESSION["cover_path"])
         kwargs = dict(
-            md_text=body["markdown"], image_path=SESSION["cover_path"],
+            md_text=body["markdown"], image_path=cover_for_build,
             lang=body["lang"], date=body["date"],
             author=body.get("author") or None, slug=body.get("slug") or None,
             tag=body.get("tag") or None, highlight=body.get("highlight") or None,
@@ -581,6 +624,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # from the repo like any other post's cover from now on.
         SESSION["cover_rel"] = None
         SESSION["cover_path"] = None
+        # C2: a completed edit/translate must not leak into the next "Neuer
+        # Beitrag" — reset to a fresh session now that publishing is done.
+        SESSION.update(mode="new", translate_of=None, edit_slug=None, cover_is_repo=False)
 
         self.send_json({"ok": True,
                         "url": f"https://zwischenwelten-berlin.de/aktuelles/{r['slug']}",
