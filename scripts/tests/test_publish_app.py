@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import publish_app
 import publish_post
 
-from test_build_post import repo, cover, MD, INDEX_MIN  # noqa: F401
+from test_build_post import repo, cover, MD, INDEX_MIN  # noqa: F401 (also used by new rich-text tests)
 
 
 class FakeHandler(publish_app.Handler):
@@ -192,6 +192,57 @@ def test_new_author_broken_photo_b64_gives_german_error(repo, monkeypatch):
     assert "foto" in payload["error"].lower()
     after = (repo / "assets" / "blog" / "authors.json").read_text()
     assert before == after
+
+
+def test_md_to_html_and_back_round_trips(repo, cover):
+    h = FakeHandler()
+    h.api_md_to_html({"markdown": MD, "lang": "de"})
+    _, payload = h.sent
+    assert payload["ok"]
+    assert payload["html"].startswith("<h1>Ein Test</h1>")
+    assert "<em>Der Untertitel</em>" in payload["html"]
+    assert "Author: Süleyman Bağ" in payload["html"]
+
+    h2 = FakeHandler()
+    h2.api_html_to_md({"html": payload["html"]})
+    _, p2 = h2.sent
+    assert p2["ok"]
+    # word-identical: rebuilding from the round-tripped md must satisfy fidelity
+    r = publish_post.build_post(p2["markdown"], cover, lang="de",
+                                date="2026-08-03", slug="rt", author=None,
+                                write=False)
+    assert r["title"] == "Ein Test"
+    assert r["subtitle"] == "Der Untertitel"
+    assert r["author"] == "Süleyman Bağ"
+
+
+def test_md_to_html_missing_title_returns_german_error(repo):
+    h = FakeHandler()
+    h.api_md_to_html({"markdown": "Kein Titel hier.\n", "lang": "de"})
+    _, payload = h.sent
+    assert payload["ok"] is False
+    assert payload["error"]
+
+
+def test_html_to_md_preserves_structure_markers():
+    h = FakeHandler()
+    html = ('<h1>Ein Test</h1>\n<p><em>Der Untertitel</em></p>\n'
+            '<p>Author: Süleyman Bağ</p>\n'
+            '<p>Erster Absatz mit <strong>wichtig</strong>.</p>\n'
+            '<h2>Zwischentitel</h2>\n'
+            '<ul><li>eins</li><li>zwei</li></ul>\n'
+            '<blockquote class="pull-quote"><p>Ein schönes Zitat.</p></blockquote>')
+    h.api_html_to_md({"html": html})
+    _, payload = h.sent
+    assert payload["ok"]
+    md = payload["markdown"]
+    assert "# Ein Test" in md
+    assert "*Der Untertitel*" in md
+    assert "Author: Süleyman Bağ" in md
+    assert "**wichtig**" in md
+    assert "## Zwischentitel" in md
+    assert "- eins" in md
+    assert "> Ein schönes Zitat." in md
 
 
 def test_git_flow_pull_failure_log_has_no_raw_sentinel(monkeypatch):

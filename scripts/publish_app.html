@@ -209,15 +209,82 @@
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     font-size:12.5px;
     line-height:1.55;
-    margin-top:8px;
+    margin-top:0;
+    border-top-left-radius:0;
   }
-  details.md-details{ margin:8px 0 20px; }
-  details.md-details summary{
-    cursor:pointer;
+
+  /* ---------- markdown / rich-text editor tabs ---------- */
+  .editor-tabs{ display:flex; gap:4px; margin-top:8px; }
+  .editor-tabs .tab{
+    appearance:none;
+    border:1px solid var(--line-strong);
+    border-bottom:none;
+    background:var(--bg);
+    color:var(--text-soft);
+    font-family:inherit;
     font-size:13px;
     font-weight:600;
-    color:var(--accent);
+    padding:8px 16px;
+    border-radius:8px 8px 0 0;
+    cursor:pointer;
+    position:relative;
+    top:1px;
   }
+  .editor-tabs .tab.is-active{ background:#fff; color:var(--accent); }
+  .editor-tabs .tab:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .rich-toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px;
+    border:1px solid var(--line-strong);
+    border-bottom:none;
+    background:var(--bg);
+    padding:6px;
+  }
+  .rich-toolbar button{
+    appearance:none;
+    border:1px solid var(--line-strong);
+    background:#fff;
+    color:var(--text);
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:600;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .rich-toolbar button:hover{ border-color:var(--accent); color:var(--accent); }
+  #f-rich{
+    min-height:320px;
+    border:1px solid var(--line-strong);
+    border-radius:0 0 8px 8px;
+    padding:14px 16px;
+    font:inherit;
+    font-size:14px;
+    line-height:1.6;
+    background:#fff;
+    overflow-y:auto;
+  }
+  #f-rich:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
+  #f-rich h1{ font-size:20px; margin:0 0 10px; color:var(--accent); }
+  #f-rich h2{ font-size:17px; margin:18px 0 8px; color:var(--accent); }
+  #f-rich h3{ font-size:15px; margin:16px 0 6px; color:var(--accent); }
+  #f-rich p{ margin:0 0 10px; }
+  #f-rich ul{ margin:0 0 10px; padding-left:22px; }
+  #f-rich li{ margin-bottom:4px; }
+  #f-rich blockquote{
+    margin:12px 0;
+    padding:10px 16px;
+    border-left:3px solid var(--accent);
+    background:var(--accent-soft);
+    font-style:italic;
+    color:var(--text-soft);
+  }
+  #f-rich table{ border-collapse:collapse; margin:10px 0; font-size:13px; }
+  #f-rich table td, #f-rich table th{ border:1px solid var(--line-strong); padding:6px 8px; }
+  #f-rich a{ color:var(--accent); }
+  .rich-linkbar{ display:flex; gap:8px; margin-top:8px; }
+  .rich-linkbar input{ flex:1; }
   .static-value{ font-size:16px; font-weight:700; }
   .static-value.subtitle{ font-size:13px; font-weight:500; color:var(--text-soft); margin-top:2px; }
   .static-value.empty{ color:var(--text-soft); font-weight:500; font-style:italic; }
@@ -511,10 +578,31 @@
         <input type="text" id="f-caption">
       </div>
 
-      <details class="md-details">
-        <summary>Markdown bearbeiten (maßgeblich für Veröffentlichung &amp; Abgleich)</summary>
+      <div class="field">
+        <label>Text (maßgeblich für Veröffentlichung &amp; Abgleich ist immer das Markdown)</label>
+        <div class="editor-tabs" role="tablist">
+          <button type="button" id="tab-md" class="tab is-active" role="tab" aria-selected="true">Markdown</button>
+          <button type="button" id="tab-rich" class="tab" role="tab" aria-selected="false">Rich Text</button>
+        </div>
         <textarea id="f-markdown" spellcheck="false"></textarea>
-      </details>
+        <div id="rich-wrap" hidden>
+          <div class="rich-toolbar">
+            <button type="button" data-cmd="bold" title="Fett"><b>F</b></button>
+            <button type="button" data-cmd="italic" title="Kursiv"><i>K</i></button>
+            <button type="button" data-block="<h2>">H2</button>
+            <button type="button" data-block="<h3>">H3</button>
+            <button type="button" data-block="<p>">¶</button>
+            <button type="button" data-cmd="insertUnorderedList">• Liste</button>
+            <button type="button" data-block="<blockquote>">„Zitat“</button>
+            <button type="button" id="rich-link">Link</button>
+          </div>
+          <div id="f-rich" contenteditable="true" spellcheck="false"></div>
+          <div class="rich-linkbar" id="rich-linkbar" hidden>
+            <input type="url" id="rich-link-url" placeholder="https://…">
+            <button type="button" id="rich-link-apply" class="btn btn-secondary">OK</button>
+          </div>
+        </div>
+      </div>
 
       <div class="actions actions-split">
         <a href="#" id="btn-restart" class="link-muted">← Andere Dateien wählen</a>
@@ -596,6 +684,8 @@ let publishPending = false;
 let convertPending = false;
 let previewPending = false;
 let retryPending = false;
+let richActive = false;        // true while the Rich-Text tab holds the live copy
+let savedRange = null;         // selection saved before focus moves to the link URL field
 
 async function api(path, payload) {
   const res = await fetch(path, { method: "POST",
@@ -895,6 +985,13 @@ function fillForm(r) {
   document.getElementById("f-markdown").value = r.markdown || "";
   document.getElementById("f-new-author").checked = false;
 
+  // A fresh manuscript invalidates any stale rich-text copy — always land
+  // back on the Markdown tab (which is authoritative) rather than risk
+  // showing content from a previous post.
+  richActive = false;
+  document.getElementById("f-rich").innerHTML = "";
+  toggleTabs();
+
   renderAuthorStatus();
 
   const warnWrap = document.getElementById("convert-warnings-wrap");
@@ -952,6 +1049,94 @@ function formPayload() {
   };
 }
 
+// ---- markdown / rich-text editor tabs -------------------------------------
+// The Python converters (publish_post.parse_md/md_to_blocks and
+// html_to_md.fragment_to_md) are the single source of truth here — the tab
+// never runs its own markdown<->HTML logic, it only round-trips through the
+// server so the rich editor can never drift from what actually gets
+// published.
+function toggleTabs() {
+  document.getElementById("tab-md").classList.toggle("is-active", !richActive);
+  document.getElementById("tab-md").setAttribute("aria-selected", String(!richActive));
+  document.getElementById("tab-rich").classList.toggle("is-active", richActive);
+  document.getElementById("tab-rich").setAttribute("aria-selected", String(richActive));
+  document.getElementById("f-markdown").hidden = richActive;
+  document.getElementById("rich-wrap").hidden = !richActive;
+}
+
+async function toRich() {
+  const r = await api("/api/md-to-html", {
+    markdown: document.getElementById("f-markdown").value,
+    lang: document.getElementById("f-lang").value,
+  });
+  if (!r.ok) { showError("screen-form", r.error); return false; }
+  document.getElementById("f-rich").innerHTML = r.html;
+  richActive = true;
+  toggleTabs();
+  return true;
+}
+
+async function toMarkdown() {
+  const r = await api("/api/html-to-md", { html: document.getElementById("f-rich").innerHTML });
+  if (!r.ok) { showError("screen-form", r.error); return false; }
+  document.getElementById("f-markdown").value = r.markdown;
+  richActive = false;
+  toggleTabs();
+  return true;
+}
+
+// Called before Vorschau: serialize the rich editor back into the markdown
+// textarea (a no-op when the Markdown tab is already the live copy). Returns
+// false — leaving both tabs and their content untouched — if the conversion
+// request fails, so the caller can bail out instead of previewing stale data.
+async function syncEditor() {
+  if (!richActive) return true;
+  return toMarkdown();
+}
+
+document.getElementById("tab-md").addEventListener("click", () => {
+  if (!richActive) return;
+  toMarkdown();
+});
+document.getElementById("tab-rich").addEventListener("click", () => {
+  if (richActive) return;
+  // Defensive: nothing to convert before a manuscript has been loaded.
+  if (!document.getElementById("f-markdown").value.trim()) return;
+  toRich();
+});
+
+// Toolbar buttons must not steal the contenteditable selection: without
+// preventDefault on mousedown, the click moves focus off #f-rich first,
+// collapsing the selection the command was meant to apply to.
+document.querySelectorAll(".rich-toolbar button").forEach(b =>
+  b.addEventListener("mousedown", e => e.preventDefault()));
+document.querySelectorAll(".rich-toolbar [data-cmd]").forEach(b =>
+  b.addEventListener("click", () => document.execCommand(b.dataset.cmd)));
+document.querySelectorAll(".rich-toolbar [data-block]").forEach(b =>
+  b.addEventListener("click", () => document.execCommand("formatBlock", false, b.dataset.block)));
+
+// Link: no window.prompt (it blocks automation) — an inline URL bar instead.
+// The selection must be captured before focus moves to the URL input, since
+// focusing the input collapses the contenteditable's selection.
+document.getElementById("rich-link").addEventListener("click", () => {
+  const sel = window.getSelection();
+  savedRange = sel.rangeCount ? sel.getRangeAt(0) : null;
+  document.getElementById("rich-linkbar").hidden = false;
+  document.getElementById("rich-link-url").focus();
+});
+document.getElementById("rich-link-apply").addEventListener("click", () => {
+  const rich = document.getElementById("f-rich");
+  rich.focus();
+  if (savedRange) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+  }
+  document.execCommand("createLink", false, document.getElementById("rich-link-url").value);
+  document.getElementById("rich-linkbar").hidden = true;
+  document.getElementById("rich-link-url").value = "";
+});
+
 async function doPreview() {
   if (previewPending) return;
   previewPending = true;
@@ -963,6 +1148,7 @@ async function doPreview() {
   setPublishEnabled(false); // any preview attempt invalidates the previous one until it succeeds
 
   try {
+    if (!(await syncEditor())) return;
     const r = await api("/api/preview", formPayload());
     if (!r.ok) { showError("screen-form", r.error); return; }
     state.preview = r;

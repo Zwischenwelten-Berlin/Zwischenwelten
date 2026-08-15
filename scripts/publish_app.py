@@ -267,6 +267,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.api_translation_init(body)
             elif self.path == "/api/replace-cover":
                 self.api_replace_cover(body)
+            elif self.path == "/api/md-to-html":
+                self.api_md_to_html(body)
+            elif self.path == "/api/html-to-md":
+                self.api_html_to_md(body)
             else:
                 self.send_error(404)
         except (ManuscriptError, PublishError) as e:
@@ -434,6 +438,37 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         SESSION["preview"] = None
         SESSION["publish_args"] = None
         self.send_json({"ok": True})
+
+    def api_md_to_html(self, body):
+        # Rich-text tab: converts the manuscript into an editable HTML
+        # fragment via the exact same publish_post building blocks the CLI
+        # uses, so the rich editor can never drift from the Markdown ->
+        # house-style pipeline. Caught locally (not left to do_POST's
+        # handler) so this behaves the same whether reached via HTTP
+        # dispatch or called directly, as the test harness does.
+        try:
+            md, lang = body["markdown"], body.get("lang") or "de"
+            byline = publish_post.find_author_in_md(md)
+            title, subtitle, body_md = publish_post.parse_md(md, lang)
+            parts = [f"<h1>{publish_post.esc(title)}</h1>"]
+            if subtitle:
+                parts.append(f"<p><em>{publish_post.esc(subtitle)}</em></p>")
+            if byline:
+                parts.append(f"<p>Author: {publish_post.esc(byline)}</p>")
+            parts.append(publish_post.md_to_blocks(body_md, lang))
+            self.send_json({"ok": True, "html": "\n".join(parts)})
+        except PublishError as e:
+            self.send_json({"ok": False, "error": str(e)})
+
+    def api_html_to_md(self, body):
+        # Rich-text tab, reverse direction: the contenteditable fragment ->
+        # manuscript markdown, via the same converter the backfill CLI
+        # uses. Caught locally, same reasoning as api_md_to_html.
+        try:
+            from html_to_md import fragment_to_md
+            self.send_json({"ok": True, "markdown": fragment_to_md(body["html"])})
+        except PublishError as e:
+            self.send_json({"ok": False, "error": str(e)})
 
     def api_preview(self, body):
         # Slug (and, for edit, language) are immutable once a post is being
