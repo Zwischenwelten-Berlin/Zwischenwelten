@@ -4,17 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Publish-App – ZWISCHENWELTEN</title>
+<link rel="stylesheet" href="/assets/fonts.css">
 <style>
+  /* Tokens mirror assets/site.css: warm paper canvas, Berlin blue ink,
+     orange accent. --accent is the site's orange (action/highlight), ink
+     text always uses --text. */
   :root{
-    --accent:#123f7a;
-    --accent-dark:#0c2c58;
-    --accent-soft:rgba(18,63,122,0.07);
-    --bg:#f5f7fa;
+    --bg:#e9e7e1;
+    --canvas:#f4f1e9;
+    --paper:#f6f3eb;
+    --text:#123f7a;
+    --text-soft:#32527f;
+    --muted:#6d7278;
+    --line:rgba(18,63,122,0.08);
+    --line-strong:rgba(18,63,122,0.12);
+    --line-input:rgba(18,63,122,0.28);
+    --accent:#e2851e;
+    --accent-dark:#c66f12;
+    --accent-soft:rgba(226,133,30,0.12);
     --white:#ffffff;
-    --line:#e1e6ee;
-    --line-strong:#c7d0e0;
-    --text:#1c2733;
-    --text-soft:#5a6a7d;
+    --shadow:0 18px 40px rgba(0,0,0,0.08);
     --green:#1c7a41;
     --green-bg:#eaf7ee;
     --green-line:#bfe3cc;
@@ -24,30 +33,58 @@
     --red:#a3231b;
     --red-bg:#fdecea;
     --red-line:#f3b6b0;
-    --radius:14px;
+    --radius:20px;
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; }
   body{
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg);
     color:var(--text);
     line-height:1.5;
     -webkit-font-smoothing:antialiased;
   }
+
+  /* Warm rounded canvas with the site's subtle grid texture — the app's
+     equivalent of the public pages' .site-shell. */
+  .app-shell{
+    width:min(calc(100% - 32px), 960px);
+    margin:16px auto;
+    background:var(--canvas);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+    min-height:calc(100vh - 32px);
+  }
+  .app-shell::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:96px 96px;
+    pointer-events:none;
+  }
+  .app-shell > *{ position:relative; z-index:1; }
+
   main{
-    max-width:720px;
+    max-width:760px;
     margin:0 auto;
-    padding:32px 20px 80px;
+    padding:10px 20px 80px;
   }
   h1{
-    font-size:22px;
-    margin:0 0 20px;
-    color:var(--accent);
-    letter-spacing:-0.01em;
+    font-size:clamp(28px, 4.5vw, 36px);
+    line-height:1.05;
+    margin:22px 0;
+    color:var(--text);
+    font-weight:800;
+    letter-spacing:-0.04em;
   }
   h2.subhead{
-    font-size:14px;
+    font-size:13px;
+    font-weight:600;
     text-transform:uppercase;
     letter-spacing:.06em;
     color:var(--text-soft);
@@ -67,23 +104,102 @@
     text-align:center;
     font-size:11.5px;
     font-weight:600;
-    letter-spacing:.03em;
+    letter-spacing:.06em;
+    text-transform:uppercase;
     color:var(--text-soft);
     padding-bottom:10px;
-    border-bottom:3px solid var(--line-strong);
+    border-bottom:3px solid rgba(18,63,122,0.18);
     transition:color .15s, border-color .15s;
   }
-  #steps li.is-active{ color:var(--accent); border-color:var(--accent); }
-  #steps li.is-done{ color:var(--accent); border-color:rgba(18,63,122,0.35); }
+  #steps li.is-active{ color:var(--text); font-weight:700; border-color:var(--accent); }
+  #steps li.is-done{ color:var(--text); border-color:rgba(226,133,30,0.45); }
   #steps[hidden]{ display:none; }
 
+  /* ---------- top navigation ---------- */
+  #topnav{ padding:20px 0 0; }
+  #topnav .topnav-inner{
+    max-width:760px;
+    margin:0 auto;
+    padding:0 20px;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:2px 24px;
+    border-bottom:1px solid var(--line-strong);
+  }
+  #topnav .brand{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    padding-bottom:12px;
+  }
+  #topnav .brand img{ height:44px; width:auto; display:block; }
+  #topnav .brand span{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--text);
+    background:var(--accent);
+    padding:3px 9px;
+    border-radius:999px;
+  }
+  #topnav nav{ display:flex; gap:4px; }
+  .nav-tab{
+    appearance:none;
+    border:none;
+    background:none;
+    font-family:inherit;
+    font-size:14px;
+    font-weight:600;
+    color:var(--text-soft);
+    padding:10px 14px 13px;
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+    margin-bottom:-1px;
+  }
+  .nav-tab:hover{ color:var(--text); }
+  .nav-tab.is-active{ color:var(--text); font-weight:700; border-color:var(--accent); }
+  .nav-tab:focus-visible{ outline:3px solid rgba(18,63,122,0.55); outline-offset:-3px; }
+
+  /* ---------- author list ---------- */
+  .author-row{ display:flex; gap:14px; align-items:center; padding:12px 0;
+               border-bottom:1px solid var(--line-strong); }
+  .author-row:last-child{ border-bottom:none; }
+  .author-row img, .author-row .author-initials{
+    width:48px; height:48px; border-radius:50%; object-fit:cover; flex:none;
+    border:1px solid var(--line-strong); background:var(--paper);
+  }
+  .author-row .author-initials{
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:700; color:var(--text-soft);
+  }
+  .author-row .grow{ flex:1; min-width:0; }
+  .author-row .name{ font-weight:700; }
+  .author-row .meta{ color:var(--text-soft); font-size:13px; }
+  .author-row .meta a{ color:var(--text); font-weight:600;
+                       border-bottom:1px solid rgba(18,63,122,0.35); }
+
   /* ---------- post list ---------- */
+  .list-filters{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:18px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .list-filters[hidden]{ display:none; }
+  .list-filters .field{ margin-bottom:0; }
+  @media (max-width:520px){ .list-filters{ grid-template-columns:1fr; } }
+  #list-empty{ margin:6px 0 0; }
   .post-row{ display:flex; gap:14px; align-items:center; padding:12px 0;
-             border-bottom:1px solid var(--line, #e5e7ee); }
-  .post-row img{ width:72px; height:48px; object-fit:cover; border-radius:8px; }
+             border-bottom:1px solid var(--line-strong); }
+  .post-row img{ width:72px; height:48px; object-fit:cover; border-radius:10px; }
   .post-row .grow{ flex:1; min-width:0; }
-  .post-row .title{ font-weight:600; }
-  .post-row .meta{ color:#667; font-size:13px; }
+  .post-row .title{ font-weight:700; }
+  .post-row .meta{ color:var(--text-soft); font-size:13px; }
   .post-row.is-translation{ margin-left:56px; }
   .post-row .badge{ font-size:12px; border:1px solid currentColor;
                     border-radius:999px; padding:1px 8px; }
@@ -91,10 +207,9 @@
   /* ---------- card ---------- */
   .card{
     background:var(--white);
-    border:1px solid var(--line);
+    border:1px solid var(--line-strong);
     border-radius:var(--radius);
     padding:28px;
-    box-shadow:0 1px 3px rgba(20,30,50,0.06);
   }
 
   /* ---------- banners ---------- */
@@ -119,17 +234,17 @@
     margin-bottom:24px;
   }
   .dropzone{
-    border:2px dashed var(--line-strong);
-    border-radius:12px;
+    border:2px dashed rgba(18,63,122,0.25);
+    border-radius:14px;
     padding:32px 16px;
     text-align:center;
     cursor:pointer;
-    background:var(--bg);
+    background:var(--paper);
     transition:border-color .15s, background .15s;
   }
-  .dropzone:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .dropzone:focus-visible{ outline:3px solid rgba(18,63,122,0.55); outline-offset:2px; }
   .dropzone.is-dragover{ border-color:var(--accent); background:var(--accent-soft); }
-  .dropzone.has-file{ border-style:solid; border-color:var(--accent); background:var(--white); }
+  .dropzone.has-file{ border-style:solid; border-color:var(--accent-dark); background:var(--white); }
   .dropzone .zone-icon{ font-size:26px; margin-bottom:6px; }
   .dropzone .zone-label{ font-weight:700; font-size:14px; }
   .dropzone .zone-hint{ font-size:11.5px; color:var(--text-soft); margin-top:2px; }
@@ -137,8 +252,8 @@
     display:block;
     margin-top:10px;
     font-size:12.5px;
-    font-weight:600;
-    color:var(--accent);
+    font-weight:700;
+    color:var(--text);
     word-break:break-all;
   }
   @media (max-width:520px){
@@ -149,59 +264,65 @@
   /* ---------- cover replace (edit/translate) ---------- */
   #cover-replace-wrap{ flex-direction:row; align-items:center; gap:14px; }
   #cover-thumb{
-    width:96px; height:64px; object-fit:cover; border-radius:8px;
-    border:1px solid var(--line-strong); background:var(--bg);
+    width:96px; height:64px; object-fit:cover; border-radius:10px;
+    border:1px solid var(--line-strong); background:var(--paper);
   }
 
   /* ---------- buttons ---------- */
   .actions{ display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
+  .actions[hidden]{ display:none; }
   .actions-split{ justify-content:space-between; align-items:center; }
   .btn{
     appearance:none;
     border:none;
-    border-radius:8px;
+    border-radius:999px;
     padding:10px 22px;
     font-size:14px;
-    font-weight:600;
+    font-weight:700;
     cursor:pointer;
     font-family:inherit;
+    /* the cover-replace control is a <label class="btn"> — undo the global
+       eyebrow label styling for anything rendered as a button */
+    text-transform:none;
+    letter-spacing:normal;
+    color:var(--text);
   }
-  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-primary{ background:var(--accent); color:var(--text); }
   .btn-primary:hover:not(:disabled){ background:var(--accent-dark); }
-  .btn-primary:disabled{ background:#a9b6cb; cursor:not-allowed; }
-  .btn-secondary{ background:transparent; color:var(--accent); border:1px solid var(--line-strong); }
-  .btn-secondary:hover{ border-color:var(--accent); }
+  .btn-primary:disabled{ background:#dcd7ca; color:var(--muted); cursor:not-allowed; }
+  .btn-secondary{ background:transparent; color:var(--text); border:1px solid rgba(18,63,122,0.35); }
+  .btn-secondary:hover{ border-color:var(--text); }
   .link-muted{
     font-size:13px;
     color:var(--text-soft);
     text-decoration:none;
-    border-bottom:1px solid var(--line-strong);
+    border-bottom:1px solid rgba(18,63,122,0.35);
   }
-  .link-muted:hover{ color:var(--accent); border-color:var(--accent); }
+  .link-muted:hover{ color:var(--text); border-color:var(--text); }
 
   /* ---------- form fields ---------- */
   .field{ margin-bottom:16px; display:flex; flex-direction:column; gap:6px; }
   .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
   @media (max-width:520px){ .field-row{ grid-template-columns:1fr; } }
   label{
-    font-size:11.5px;
-    font-weight:700;
+    font-size:12px;
+    font-weight:600;
     color:var(--text-soft);
     text-transform:uppercase;
-    letter-spacing:.04em;
+    letter-spacing:.06em;
   }
   input[type=text], input[type=date], select, textarea{
     font:inherit;
     font-size:14px;
-    padding:9px 11px;
-    border:1px solid var(--line-strong);
-    border-radius:8px;
+    padding:9px 12px;
+    border:1px solid var(--line-input);
+    border-radius:12px;
     background:#fff;
     color:var(--text);
     width:100%;
   }
   input:focus-visible, select:focus-visible, textarea:focus-visible{
-    outline:2px solid var(--accent);
+    outline:2px solid rgba(18,63,122,0.55);
     outline-offset:1px;
   }
   textarea#f-markdown{
@@ -217,28 +338,28 @@
   .editor-tabs{ display:flex; gap:4px; margin-top:8px; }
   .editor-tabs .tab{
     appearance:none;
-    border:1px solid var(--line-strong);
+    border:1px solid var(--line-input);
     border-bottom:none;
-    background:var(--bg);
+    background:var(--paper);
     color:var(--text-soft);
     font-family:inherit;
     font-size:13px;
     font-weight:600;
     padding:8px 16px;
-    border-radius:8px 8px 0 0;
+    border-radius:10px 10px 0 0;
     cursor:pointer;
     position:relative;
     top:1px;
   }
-  .editor-tabs .tab.is-active{ background:#fff; color:var(--accent); }
-  .editor-tabs .tab:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .editor-tabs .tab.is-active{ background:#fff; color:var(--text); font-weight:700; }
+  .editor-tabs .tab:focus-visible{ outline:2px solid rgba(18,63,122,0.55); outline-offset:1px; }
   .rich-toolbar{
     display:flex;
     flex-wrap:wrap;
     gap:4px;
-    border:1px solid var(--line-strong);
+    border:1px solid var(--line-input);
     border-bottom:none;
-    background:var(--bg);
+    background:var(--paper);
     padding:6px;
   }
   .rich-toolbar button{
@@ -250,14 +371,14 @@
     font-size:12.5px;
     font-weight:600;
     padding:6px 10px;
-    border-radius:6px;
+    border-radius:8px;
     cursor:pointer;
   }
-  .rich-toolbar button:hover{ border-color:var(--accent); color:var(--accent); }
+  .rich-toolbar button:hover{ border-color:var(--text); }
   #f-rich{
     min-height:320px;
-    border:1px solid var(--line-strong);
-    border-radius:0 0 8px 8px;
+    border:1px solid var(--line-input);
+    border-radius:0 0 12px 12px;
     padding:14px 16px;
     font:inherit;
     font-size:14px;
@@ -265,10 +386,10 @@
     background:#fff;
     overflow-y:auto;
   }
-  #f-rich:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
-  #f-rich h1{ font-size:20px; margin:0 0 10px; color:var(--accent); }
-  #f-rich h2{ font-size:17px; margin:18px 0 8px; color:var(--accent); }
-  #f-rich h3{ font-size:15px; margin:16px 0 6px; color:var(--accent); }
+  #f-rich:focus-visible{ outline:2px solid rgba(18,63,122,0.55); outline-offset:-2px; }
+  #f-rich h1{ font-size:20px; margin:0 0 10px; color:var(--text); letter-spacing:-0.02em; }
+  #f-rich h2{ font-size:17px; margin:18px 0 8px; color:var(--text); letter-spacing:-0.02em; }
+  #f-rich h3{ font-size:15px; margin:16px 0 6px; color:var(--text); }
   #f-rich p{ margin:0 0 10px; }
   #f-rich ul{ margin:0 0 10px; padding-left:22px; }
   #f-rich li{ margin-bottom:4px; }
@@ -281,8 +402,8 @@
     color:var(--text-soft);
   }
   #f-rich table{ border-collapse:collapse; margin:10px 0; font-size:13px; }
-  #f-rich table td, #f-rich table th{ border:1px solid var(--line-strong); padding:6px 8px; }
-  #f-rich a{ color:var(--accent); }
+  #f-rich table td, #f-rich table th{ border:1px solid var(--line-input); padding:6px 8px; }
+  #f-rich a{ color:var(--text); font-weight:600; text-decoration:underline; }
   .rich-linkbar{ display:flex; gap:8px; margin-top:8px; }
   .rich-linkbar input{ flex:1; }
   .static-value{ font-size:16px; font-weight:700; }
@@ -307,8 +428,8 @@
     width:100%;
     height:70vh;
     min-height:420px;
-    border:1px solid var(--line-strong);
-    border-radius:10px;
+    border:1px solid var(--line-input);
+    border-radius:14px;
     background:#fff;
   }
   #card-preview-wrap{ margin-bottom:20px; }
@@ -343,13 +464,14 @@
     display:flex; align-items:center; justify-content:center;
     margin-bottom:16px;
   }
-  #result-success h2{ margin:0 0 8px; color:var(--green); }
-  #result-success a{ color:var(--accent); font-weight:600; word-break:break-all; }
+  #result-success h2{ margin:0 0 8px; color:var(--green); letter-spacing:-0.02em; }
+  #result-success a{ color:var(--text); font-weight:600; word-break:break-all;
+                     border-bottom:1px solid rgba(18,63,122,0.35); }
   .text-soft{ color:var(--text-soft); font-size:13.5px; }
   pre{
-    background:#f2f4f8;
-    border:1px solid var(--line);
-    border-radius:8px;
+    background:var(--paper);
+    border:1px solid var(--line-strong);
+    border-radius:10px;
     padding:12px;
     font-size:12px;
     overflow:auto;
@@ -415,6 +537,17 @@
 </style>
 </head>
 <body>
+<div class="app-shell">
+<header id="topnav">
+  <div class="topnav-inner">
+    <span class="brand"><img src="/ZW_logo.png" alt="ZWISCHENWELTEN"><span>Publish</span></span>
+    <nav aria-label="Bereiche">
+      <button type="button" class="nav-tab" data-nav="neu">Neuer Beitrag</button>
+      <button type="button" class="nav-tab" data-nav="beitraege">Beiträge</button>
+      <button type="button" class="nav-tab" data-nav="autoren">Autor:innen</button>
+    </nav>
+  </div>
+</header>
 <main>
   <h1>Neuer Blogpost</h1>
   <ol id="steps">
@@ -424,32 +557,22 @@
     <li data-step="screen-result">4 Fertig</li>
   </ol>
 
-  <!-- SCREEN 0: HOME -->
-  <section id="screen-home">
-    <div class="card">
-      <div class="dropzones">
-        <div class="dropzone" id="btn-home-new" tabindex="0" role="button">
-          <div class="zone-icon" aria-hidden="true">✍️</div>
-          <div class="zone-label">Neuer Beitrag</div>
-          <div class="zone-hint">Manuskript &amp; Titelbild hochladen</div>
-        </div>
-        <div class="dropzone" id="btn-home-manage" tabindex="0" role="button">
-          <div class="zone-icon" aria-hidden="true">🗂️</div>
-          <div class="zone-label">Beiträge verwalten</div>
-          <div class="zone-hint">Bearbeiten · Übersetzung hinzufügen</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SCREEN 0b: LIST -->
+  <!-- SECTION »BEITRÄGE«: LIST -->
   <section id="screen-list" hidden>
     <div class="card">
       <div id="list-error" class="banner banner-error" hidden></div>
-      <div id="list-body"></div>
-      <div class="actions actions-split">
-        <a href="#" id="btn-list-back" class="link-muted">← Zurück</a>
+      <div class="list-filters" id="list-filters" hidden>
+        <div class="field">
+          <label for="filter-author">Autor:in</label>
+          <select id="filter-author"></select>
+        </div>
+        <div class="field">
+          <label for="filter-lang">Sprache</label>
+          <select id="filter-lang"></select>
+        </div>
       </div>
+      <div id="list-body"></div>
+      <p id="list-empty" class="text-soft" hidden>Keine Beiträge für diese Filterauswahl.</p>
     </div>
   </section>
 
@@ -675,7 +798,59 @@
       </div>
     </div>
   </section>
+
+  <!-- SECTION »AUTOR:INNEN« -->
+  <section id="screen-authors" hidden>
+    <div class="card">
+      <div id="authors-error" class="banner banner-error" hidden></div>
+      <div id="authors-success" class="banner banner-success" hidden></div>
+      <div id="authors-git-warn" class="banner banner-warning" hidden></div>
+      <div id="authors-body"></div>
+      <div class="actions" id="authors-actions" style="justify-content:flex-start; margin-top:16px;">
+        <button type="button" id="btn-author-new" class="btn btn-primary">Neue Autor:in anlegen</button>
+      </div>
+
+      <div id="author-form" hidden style="margin-top:16px; padding-top:16px; border-top:1px solid var(--line-strong);">
+        <h2 class="subhead" id="author-form-title">Neue Autor:in</h2>
+        <div class="field">
+          <label for="aa-name">Name</label>
+          <input type="text" id="aa-name">
+          <p class="text-soft" id="aa-name-hint" hidden style="margin:0;">Name und Kürzel sind fest — Beiträge verweisen darauf.</p>
+        </div>
+        <div class="field">
+          <label for="aa-role">Rolle</label>
+          <input type="text" id="aa-role" placeholder="z. B. Journalistin">
+        </div>
+        <div class="field">
+          <label for="aa-aliases">Aliasse (durch Komma getrennt)</label>
+          <input type="text" id="aa-aliases" placeholder="z. B. D. Hensel, Доминик Хензель">
+        </div>
+        <label class="checkbox-label" style="color:var(--text-soft);">
+          <input type="checkbox" id="aa-with-page">
+          <span id="aa-with-page-label">Autorenseite erstellen</span>
+        </label>
+        <div id="aa-page-fields" hidden>
+          <p id="aa-page-warn" class="banner banner-warning compact" hidden>Achtung: Die bestehende Seite wird aus der Vorlage neu erzeugt — manuelle Änderungen an der Seite gehen verloren.</p>
+          <div class="field" style="margin-top:12px;">
+            <label for="aa-bio">Biografie</label>
+            <textarea id="aa-bio" rows="5" placeholder="Ein oder mehrere Absätze, getrennt durch Leerzeilen."></textarea>
+          </div>
+          <div class="field">
+            <label for="aa-photo">Foto</label>
+            <input type="file" id="aa-photo" accept=".png,.jpg,.jpeg">
+            <p class="text-soft" id="aa-photo-hint" hidden style="margin:0;">Ohne neue Auswahl wird das vorhandene Foto weiterverwendet.</p>
+          </div>
+        </div>
+        <p id="author-form-error" class="banner banner-error compact" hidden></p>
+        <div class="actions">
+          <button type="button" id="btn-author-cancel" class="btn btn-secondary">Abbrechen</button>
+          <button type="button" id="btn-author-save" class="btn btn-primary">Anlegen</button>
+        </div>
+      </div>
+    </div>
+  </section>
 </main>
+</div>
 
 <script>
 const state = { mode: "new", manuscript: null, cover: null, convert: null, preview: null, translateInit: null };
@@ -719,6 +894,46 @@ const MODE_TITLES = {
   translate: "Übersetzung hinzufügen",
 };
 
+// ---- sections & navigation -------------------------------------------------
+// Three sections behind the top nav: "neu" (the new-post wizard), "beitraege"
+// (post list plus the edit/translate flows, which reuse the wizard screens),
+// "autoren". Each remembers its current screen so switching tabs never
+// destroys work in progress; the wizard screens map to "neu" or "beitraege"
+// depending on the mode that put them on screen.
+const SECTION_NAMES = ["neu", "beitraege", "autoren"];
+const sectionScreens = { neu: "screen-drop", beitraege: "screen-list", autoren: "screen-authors" };
+let currentSection = "neu";
+
+function sectionForScreen(id) {
+  if (STEP_ORDER.includes(id)) return state.mode === "new" ? "neu" : "beitraege";
+  return id === "screen-authors" ? "autoren" : "beitraege";
+}
+
+function navigate(section) {
+  if (section === "autoren") { show("screen-authors"); loadAuthors(); return; }
+  if (section === "beitraege") {
+    const id = sectionScreens.beitraege;
+    // Resume a running edit/translate flow; a finished one (result screen)
+    // or none at all lands on the list.
+    if (id !== "screen-list" && id !== "screen-result" && state.mode !== "new") { show(id); return; }
+    show("screen-list");
+    loadList();
+    return;
+  }
+  // "neu": switching here while an edit/translate flow owns the shared
+  // wizard screens abandons that flow (it's re-enterable from the list)
+  // and starts a clean new-post wizard.
+  if (state.mode !== "new") {
+    enterNewMode();
+    sectionScreens.beitraege = "screen-list";
+    show("screen-drop");
+    return;
+  }
+  const id = sectionScreens.neu;
+  if (id === "screen-result") { enterNewMode(); show("screen-drop"); return; }
+  show(id);
+}
+
 function show(id) {
   for (const s of document.querySelectorAll("main > section")) s.hidden = true;
   document.getElementById(id).hidden = false;
@@ -726,9 +941,17 @@ function show(id) {
   const isWizard = STEP_ORDER.includes(id);
   document.getElementById("steps").hidden = !isWizard;
 
+  currentSection = sectionForScreen(id);
+  sectionScreens[currentSection] = id;
+  document.querySelectorAll(".nav-tab").forEach((t) =>
+    t.classList.toggle("is-active", t.dataset.nav === currentSection));
+  history.replaceState(null, "", "#" + currentSection);
+
   const h1 = document.querySelector("h1");
-  if (id === "screen-home" || id === "screen-list") {
-    h1.textContent = "Blog verwalten";
+  if (id === "screen-list") {
+    h1.textContent = "Beiträge";
+  } else if (id === "screen-authors") {
+    h1.textContent = "Autor:innen";
   } else if (isWizard) {
     h1.textContent = (state.mode === "translate" && state.translateInit)
       ? `Übersetzung: ${state.translateInit.original.title}`
@@ -1313,12 +1536,12 @@ function escHtml(s) {
   }[c]));
 }
 
+const listFilters = { author: "", lang: "" };
+
 async function loadList() {
   const errEl = document.getElementById("list-error");
-  const body = document.getElementById("list-body");
   errEl.hidden = true;
   errEl.textContent = "";
-  body.innerHTML = "";
 
   let r;
   try {
@@ -1337,15 +1560,84 @@ async function loadList() {
     return;
   }
 
-  for (const p of r.posts) {
-    body.appendChild(postRow(p, false));
-    for (const t of p.translations) body.appendChild(postRow(t, true));
-  }
+  state.posts = r.posts;
+  state.postLangs = r.langs || {};
+  renderListFilters();
+  renderList();
 }
 
-function postRow(p, isTranslation) {
+function flatPosts() {
+  return (state.posts || []).flatMap((p) => [p, ...p.translations]);
+}
+
+// (Re)fill the two filter selects from the loaded posts: authors keyed by
+// their canonical author_id (labelled with the original's author spelling,
+// which is iterated first), languages restricted to those actually present.
+// A still-valid selection survives a reload; a vanished one falls back to
+// "Alle".
+function renderListFilters() {
+  const flat = flatPosts();
+  document.getElementById("list-filters").hidden = flat.length === 0;
+
+  const authors = new Map();
+  for (const p of flat) {
+    if (p.author_id && !authors.has(p.author_id)) authors.set(p.author_id, p.author);
+  }
+  const authorSel = document.getElementById("filter-author");
+  fillFilterSelect(authorSel, "Alle Autor:innen", authors, listFilters.author);
+  listFilters.author = authorSel.value;
+
+  const langs = new Map();
+  for (const [code, label] of Object.entries(state.postLangs || {})) {
+    if (flat.some((p) => p.lang === code)) langs.set(code, label);
+  }
+  const langSel = document.getElementById("filter-lang");
+  fillFilterSelect(langSel, "Alle Sprachen", langs, listFilters.lang);
+  listFilters.lang = langSel.value;
+}
+
+function fillFilterSelect(sel, allLabel, options, current) {
+  sel.innerHTML = "";
+  const all = document.createElement("option");
+  all.value = "";
+  all.textContent = allLabel;
+  sel.appendChild(all);
+  for (const [value, label] of options) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  }
+  sel.value = options.has(current) ? current : "";
+}
+
+function renderList() {
+  const body = document.getElementById("list-body");
+  body.innerHTML = "";
+  const { author, lang } = listFilters;
+  const matches = (p) => (!author || p.author_id === author) && (!lang || p.lang === lang);
+  let shown = 0;
+
+  if (!author && !lang) {
+    for (const p of state.posts || []) {
+      body.appendChild(postRow(p, false)); shown++;
+      for (const t of p.translations) { body.appendChild(postRow(t, true)); shown++; }
+    }
+  } else {
+    // Filters active: a translation can match on its own (e.g. Sprache=tr),
+    // so the original/translation grouping no longer applies — show a flat,
+    // date-sorted list of every matching row instead.
+    flatPosts()
+      .filter(matches)
+      .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+      .forEach((p) => { body.appendChild(postRow(p, false)); shown++; });
+  }
+  document.getElementById("list-empty").hidden = shown > 0;
+}
+
+function postRow(p, indent) {
   const row = document.createElement("div");
-  row.className = "post-row" + (isTranslation ? " is-translation" : "");
+  row.className = "post-row" + (indent ? " is-translation" : "");
   const locked = p.locked;
   row.innerHTML = `
     ${p.cover ? `<img src="${escHtml(p.cover)}" alt="">` : ""}
@@ -1356,16 +1648,156 @@ function postRow(p, isTranslation) {
     </div>
     ${locked ? "" : `<button class="btn btn-secondary" data-action="edit"
         data-slug="${escHtml(p.slug)}">Bearbeiten</button>`}
-    ${isTranslation ? "" : `<button class="btn btn-secondary" data-action="translate"
+    ${p.original_slug ? "" : `<button class="btn btn-secondary" data-action="translate"
         data-slug="${escHtml(p.slug)}">Übersetzung +</button>`}`;
   return row;
 }
 
-function onActivate(el, handler) {
-  el.addEventListener("click", handler);
-  el.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handler(e); }
-  });
+// ---- section »Autor:innen«: list + create + edit ---------------------------
+// Create posts to the same /api/new-author the in-form panel uses; edit goes
+// to /api/update-author (role/aliases always, page regeneration only when
+// the checkbox opens the bio/photo fields). canonical/id are immutable.
+let authorEditing = null;   // /api/authors entry being edited, or null = create
+let authorSavePending = false;
+
+async function loadAuthors() {
+  const errEl = document.getElementById("authors-error");
+  const body = document.getElementById("authors-body");
+  errEl.hidden = true;
+  body.innerHTML = "";
+
+  let r;
+  try {
+    const res = await fetch("/api/authors");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    r = await res.json();
+  } catch (e) {
+    errEl.textContent = "Autor:innen konnten nicht geladen werden: " + (e && e.message ? e.message : e);
+    errEl.hidden = false;
+    return;
+  }
+  if (!r.ok) {
+    errEl.textContent = r.error || "Autor:innen konnten nicht geladen werden.";
+    errEl.hidden = false;
+    return;
+  }
+  state.authors = r.authors;
+  for (const a of r.authors) body.appendChild(authorRow(a));
+}
+
+function authorRow(a) {
+  const row = document.createElement("div");
+  row.className = "author-row";
+  const initials = a.canonical.split(/\s+/).map((w) => w[0]).slice(0, 2).join("");
+  const posts = a.post_count === 1 ? "1 Beitrag" : a.post_count + " Beiträge";
+  row.innerHTML = `
+    ${a.photo ? `<img src="${escHtml(a.photo)}" alt="">`
+              : `<div class="author-initials" aria-hidden="true">${escHtml(initials)}</div>`}
+    <div class="grow">
+      <div class="name">${escHtml(a.canonical)}</div>
+      <div class="meta">${escHtml(a.role)} · ${posts}
+        ${a.page ? ` · <a href="${escHtml(a.page)}" target="_blank" rel="noopener">Seite ↗</a>` : ""}
+        ${a.aliases.length ? `<br>Aliasse: ${escHtml(a.aliases.join(", "))}` : ""}</div>
+    </div>
+    <button class="btn btn-secondary" data-author-id="${escHtml(a.id)}">Bearbeiten</button>`;
+  return row;
+}
+
+function openAuthorForm(a) {
+  authorEditing = a || null;
+  document.getElementById("authors-success").hidden = true;
+  document.getElementById("authors-git-warn").hidden = true;
+  document.getElementById("author-form-title").textContent =
+    a ? "Bearbeiten: " + a.canonical : "Neue Autor:in";
+  document.getElementById("aa-name").value = a ? a.canonical : "";
+  document.getElementById("aa-name").disabled = !!a;
+  document.getElementById("aa-name-hint").hidden = !a;
+  document.getElementById("aa-role").value = a ? a.role : "";
+  document.getElementById("aa-aliases").value = a ? a.aliases.join(", ") : "";
+  document.getElementById("aa-with-page").checked = false;
+  document.getElementById("aa-with-page-label").textContent =
+    a && a.page ? "Autorenseite neu erzeugen (Bio/Foto ändern)" : "Autorenseite erstellen";
+  document.getElementById("aa-page-fields").hidden = true;
+  document.getElementById("aa-page-warn").hidden = true;
+  document.getElementById("aa-bio").value = "";
+  document.getElementById("aa-photo").value = "";
+  document.getElementById("aa-photo-hint").hidden = !(a && a.photo);
+  document.getElementById("author-form-error").hidden = true;
+  document.getElementById("btn-author-save").textContent = a ? "Speichern" : "Anlegen";
+  document.getElementById("author-form").hidden = false;
+  document.getElementById("authors-actions").hidden = true;
+  document.getElementById(a ? "aa-role" : "aa-name").focus();
+}
+
+function closeAuthorForm() {
+  authorEditing = null;
+  document.getElementById("author-form").hidden = true;
+  document.getElementById("authors-actions").hidden = false;
+}
+
+function showAuthorFormError(message) {
+  const errEl = document.getElementById("author-form-error");
+  errEl.textContent = message;
+  errEl.hidden = false;
+}
+
+async function saveAuthor() {
+  if (authorSavePending) return;
+  document.getElementById("author-form-error").hidden = true;
+
+  const name = document.getElementById("aa-name").value.trim();
+  const role = document.getElementById("aa-role").value.trim();
+  const aliases = document.getElementById("aa-aliases").value
+    .split(",").map((s) => s.trim()).filter(Boolean);
+  const withPage = document.getElementById("aa-with-page").checked;
+  const bio = document.getElementById("aa-bio").value.trim();
+  const photoFile = document.getElementById("aa-photo").files[0];
+
+  if (!name || !role) { showAuthorFormError("Name und Rolle sind Pflichtfelder."); return; }
+  let page = null;
+  if (withPage) {
+    if (!bio) { showAuthorFormError("Biografie ist ein Pflichtfeld für die Autorenseite."); return; }
+    if (!photoFile && !(authorEditing && authorEditing.photo)) {
+      showAuthorFormError("Bitte ein Foto auswählen.");
+      return;
+    }
+    page = { bio };
+    if (photoFile) {
+      page.photo_b64 = await fileToB64(photoFile);
+      page.photo_ext = "." + photoFile.name.split(".").pop().toLowerCase();
+    }
+  }
+
+  authorSavePending = true;
+  const btn = document.getElementById("btn-author-save");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Wird gespeichert …";
+  try {
+    const r = authorEditing
+      ? await api("/api/update-author", { id: authorEditing.id, role, aliases, page })
+      : await api("/api/new-author", { canonical: name, role, aliases, page });
+    if (!r.ok) { showAuthorFormError(r.error); return; }
+
+    const okEl = document.getElementById("authors-success");
+    okEl.textContent = authorEditing
+      ? "„" + r.canonical + "“ wurde aktualisiert."
+      : "„" + r.canonical + "“ wurde registriert.";
+    okEl.hidden = false;
+    if (!r.committed) {
+      const warnEl = document.getElementById("authors-git-warn");
+      warnEl.textContent = "Gespeichert, aber Git-Push fehlgeschlagen — Details: " + r.git_output;
+      warnEl.hidden = false;
+    }
+    closeAuthorForm();
+    loadAuthors();
+  } catch (e) {
+    showAuthorFormError("Netzwerkfehler: " + (e && e.message ? e.message : e));
+  } finally {
+    authorSavePending = false;
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 // Undo the drop-screen's file selection so re-entering "Neuer Beitrag" after
@@ -1429,6 +1861,10 @@ async function startEdit(slug) {
   const r = await api("/api/edit-load", { slug });
   if (!r.ok) { showListError(r.error); return; }
   state.mode = "edit";
+  // The edit refills the shared wizard screens, so any paused new-post
+  // wizard is gone — its tab must restart at the drop screen, not resume
+  // a form that now shows this edit's content.
+  sectionScreens.neu = "screen-drop";
   state.convert = r;
   fillForm(r);                 // fillForm reads state.mode to lock/populate accordingly
   document.getElementById("f-slug").disabled = true;
@@ -1440,6 +1876,7 @@ async function startTranslate(slug) {
   const r = await api("/api/translation-init", { slug });
   if (!r.ok) { showListError(r.error); return; }
   state.mode = "translate";
+  sectionScreens.neu = "screen-drop"; // same reasoning as in startEdit
   state.translateInit = r;
   resetDropScreen();
   setCoverZoneOptional(true);
@@ -1507,17 +1944,11 @@ async function doReplaceCover(file) {
 setupDropzone("zone-manuscript", "input-manuscript", "name-manuscript", "manuscript");
 setupDropzone("zone-cover", "input-cover", "name-cover", "cover");
 
-onActivate(document.getElementById("btn-home-new"), () => {
-  enterNewMode();
-  show("screen-drop");
-});
-onActivate(document.getElementById("btn-home-manage"), () => {
-  show("screen-list");
-  loadList();
-});
-document.getElementById("btn-list-back").addEventListener("click", (e) => {
-  e.preventDefault();
-  show("screen-home");
+document.querySelectorAll(".nav-tab").forEach((t) =>
+  t.addEventListener("click", () => navigate(t.dataset.nav)));
+window.addEventListener("hashchange", () => {
+  const s = (location.hash || "").replace("#", "");
+  if (SECTION_NAMES.includes(s) && s !== currentSection) navigate(s);
 });
 document.getElementById("list-body").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-action]");
@@ -1525,6 +1956,29 @@ document.getElementById("list-body").addEventListener("click", (e) => {
   const { action, slug } = btn.dataset;
   if (action === "edit") startEdit(slug);
   else if (action === "translate") startTranslate(slug);
+});
+document.getElementById("filter-author").addEventListener("change", (e) => {
+  listFilters.author = e.target.value;
+  renderList();
+});
+document.getElementById("filter-lang").addEventListener("change", (e) => {
+  listFilters.lang = e.target.value;
+  renderList();
+});
+
+document.getElementById("btn-author-new").addEventListener("click", () => openAuthorForm(null));
+document.getElementById("btn-author-cancel").addEventListener("click", closeAuthorForm);
+document.getElementById("btn-author-save").addEventListener("click", saveAuthor);
+document.getElementById("authors-body").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-author-id]");
+  if (!btn) return;
+  const a = (state.authors || []).find((x) => x.id === btn.dataset.authorId);
+  if (a) openAuthorForm(a);
+});
+document.getElementById("aa-with-page").addEventListener("change", () => {
+  const on = document.getElementById("aa-with-page").checked;
+  document.getElementById("aa-page-fields").hidden = !on;
+  document.getElementById("aa-page-warn").hidden = !(on && authorEditing && authorEditing.page);
 });
 
 document.getElementById("btn-continue").addEventListener("click", doConvert);
@@ -1554,13 +2008,13 @@ document.getElementById("btn-restart").addEventListener("click", (e) => {
 });
 document.getElementById("btn-new-post").addEventListener("click", (e) => {
   e.preventDefault();
-  state.mode = "new";
-  state.translateInit = null;
-  show("screen-home");
+  enterNewMode();
+  show("screen-drop");
 });
 
 document.getElementById("f-date").value = new Date().toISOString().slice(0, 10);
-show("screen-home");
+const initialSection = (location.hash || "").replace("#", "");
+navigate(SECTION_NAMES.includes(initialSection) ? initialSection : "neu");
 </script>
 </body>
 </html>

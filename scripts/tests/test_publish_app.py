@@ -41,6 +41,11 @@ def test_api_posts_groups_translations(repo, cover):
     assert payload["ok"]
     assert [p["slug"] for p in payload["posts"]] == ["ein-test"]
     assert [t["slug"] for t in payload["posts"][0]["translations"]] == ["ein-test-tr"]
+    # The list's author/language filters need a canonical author key per row
+    # (resolved via the same fuzzy matcher publishing uses) and lang labels.
+    assert payload["posts"][0]["author_id"] == "suleyman-bag"
+    assert payload["posts"][0]["translations"][0]["author_id"] == "suleyman-bag"
+    assert payload["langs"]["de"] == "Deutsch"
 
 
 def test_edit_load_returns_manuscript_and_meta(repo, cover):
@@ -228,6 +233,121 @@ def test_new_author_broken_photo_b64_gives_german_error(repo, monkeypatch):
     assert "foto" in payload["error"].lower()
     after = (repo / "assets" / "blog" / "authors.json").read_text()
     assert before == after
+
+
+def test_api_authors_lists_registry_with_assets_and_counts(repo, cover):
+    published(repo, cover)
+    publish_post.build_post(MD, cover, lang="tr", date="2026-08-04",
+                            slug="ein-test-tr", original_slug="ein-test", write=True)
+    (repo / "assets" / "autoren").mkdir(parents=True)
+    (repo / "assets" / "autoren" / "suleyman-bag.png").write_bytes(b"png")
+    (repo / "journalistennetzwerk" / "suleyman-bag.html").write_text("<html>", encoding="utf-8")
+    h = FakeHandler()
+    h.api_authors()
+    _, payload = h.sent
+    assert payload["ok"]
+    by_id = {a["id"]: a for a in payload["authors"]}
+    sb = by_id["suleyman-bag"]
+    assert sb["canonical"] == "Süleyman Bağ"
+    assert sb["photo"] == "/assets/autoren/suleyman-bag.png"
+    assert sb["page"] == "/journalistennetzwerk/suleyman-bag.html"
+    assert sb["post_count"] == 2  # original + translation
+    dh = by_id["dominique-hensel"]
+    assert dh["photo"] is None and dh["page"] is None and dh["post_count"] == 0
+    assert dh["role"] and isinstance(dh["aliases"], list)
+
+
+def test_update_author_role_and_aliases_only(repo, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(publish_app, "git_flow",
+                        lambda files, msg: seen.update(files=files, msg=msg) or (True, "", "ok"))
+    h = FakeHandler()
+    h.api_update_author({"id": "dominique-hensel", "role": "Neue Rolle",
+                         "aliases": ["D. Hensel", "  ", ""]})
+    _, payload = h.sent
+    assert payload["ok"], payload
+    reg = json.loads((repo / "assets" / "blog" / "authors.json").read_text())
+    entry = next(a for a in reg["authors"] if a["id"] == "dominique-hensel")
+    assert entry["role"] == "Neue Rolle"
+    assert entry["aliases"] == ["D. Hensel"]
+    assert seen["files"] == ["assets/blog/authors.json"]
+    assert "Dominique Hensel" in seen["msg"]
+    assert not (repo / "journalistennetzwerk" / "dominique-hensel.html").exists()
+
+
+def test_update_author_with_page_regenerates_and_replaces_old_photo(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    (repo / "assets" / "autoren").mkdir(parents=True)
+    (repo / "assets" / "autoren" / "dominique-hensel.jpg").write_bytes(b"old")
+    h = FakeHandler()
+    h.api_update_author({"id": "dominique-hensel", "role": "Chefredakteurin",
+                         "page": {"bio": "Absatz eins.\n\nAbsatz zwei.",
+                                  "photo_b64": COVER_PNG_B64, "photo_ext": ".png"}})
+    _, payload = h.sent
+    assert payload["ok"], payload
+    page = (repo / "journalistennetzwerk" / "dominique-hensel.html").read_text(encoding="utf-8")
+    assert "Dominique Hensel" in page
+    assert "Chefredakteurin" in page
+    assert "Absatz eins." in page and "Absatz zwei." in page
+    assert "/assets/autoren/dominique-hensel.png" in page
+    assert (repo / "assets" / "autoren" / "dominique-hensel.png").exists()
+    assert not (repo / "assets" / "autoren" / "dominique-hensel.jpg").exists()
+
+
+def test_update_author_page_reuses_existing_photo(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    (repo / "assets" / "autoren").mkdir(parents=True)
+    (repo / "assets" / "autoren" / "dominique-hensel.jpg").write_bytes(b"jpg")
+    h = FakeHandler()
+    h.api_update_author({"id": "dominique-hensel", "role": "Chefredakteurin",
+                         "page": {"bio": "Nur ein Absatz."}})
+    _, payload = h.sent
+    assert payload["ok"], payload
+    page = (repo / "journalistennetzwerk" / "dominique-hensel.html").read_text(encoding="utf-8")
+    assert "/assets/autoren/dominique-hensel.jpg" in page
+    assert (repo / "assets" / "autoren" / "dominique-hensel.jpg").read_bytes() == b"jpg"
+
+
+def test_update_author_unknown_id_errors(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    h = FakeHandler()
+    h.api_update_author({"id": "gibt-es-nicht", "role": "x"})
+    _, payload = h.sent
+    assert payload["ok"] is False
+
+
+def test_update_author_empty_role_errors(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    before = (repo / "assets" / "blog" / "authors.json").read_text()
+    h = FakeHandler()
+    h.api_update_author({"id": "dominique-hensel", "role": "  "})
+    _, payload = h.sent
+    assert payload["ok"] is False
+    assert (repo / "assets" / "blog" / "authors.json").read_text() == before
+
+
+def test_update_author_bad_photo_leaves_registry_unchanged(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    before = (repo / "assets" / "blog" / "authors.json").read_text()
+    h = FakeHandler()
+    h.api_update_author({"id": "dominique-hensel", "role": "Neue Rolle",
+                         "page": {"bio": "Absatz.", "photo_b64": "not-base64!!",
+                                  "photo_ext": ".png"}})
+    _, payload = h.sent
+    assert payload["ok"] is False
+    assert "foto" in payload["error"].lower()
+    assert (repo / "assets" / "blog" / "authors.json").read_text() == before
+    assert not (repo / "journalistennetzwerk" / "dominique-hensel.html").exists()
+
+
+def test_update_author_page_without_any_photo_errors(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    h = FakeHandler()
+    h.api_update_author({"id": "dominique-hensel", "role": "Neue Rolle",
+                         "page": {"bio": "Absatz."}})
+    _, payload = h.sent
+    assert payload["ok"] is False
+    assert "foto" in payload["error"].lower()
 
 
 def test_md_to_html_and_back_round_trips(repo, cover):

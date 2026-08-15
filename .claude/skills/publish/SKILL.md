@@ -106,11 +106,15 @@ runs through the same `manuscript_import`/`publish_post.build_post` converter an
 fidelity gate described above, so it can never produce a different result than this
 skill.
 
-Beyond a fresh "Neuer Beitrag", the app also covers editing, translating, and author
-setup:
+The app is split into three sections behind a fixed top navigation — **Neuer
+Beitrag** (the upload→form→preview→publish wizard), **Beiträge**, and
+**Autor:innen** — reachable directly via `#neu`, `#beitraege`, `#autoren`:
 
-- **Beiträge verwalten** lists every published post, with translations grouped under
-  their original. Every publish stores the manuscript at
+- **Beiträge** lists every published post, with translations grouped under
+  their original, filterable by Autor:in and Sprache (author matching runs
+  through the same fuzzy matcher as publishing, so localized name forms
+  count; with a filter active the list flattens to every matching row,
+  date-sorted). Every publish stores the manuscript at
   `assets/blog/manuscripts/<slug>.md` and records the post in
   `assets/blog/posts.json`; the list and the edit flow read from that registry, not
   by scraping HTML. The CLI equivalent of editing is `python3 scripts/publish_post.py
@@ -124,10 +128,15 @@ setup:
   regenerated), but they can still receive translations.
 - **Übersetzung +** starts a new-language version of an existing post, slug forced to
   `<original-slug>-<lang>`, same fidelity gate as any other publish.
-- **Neuer Autor** registers a person in `assets/blog/authors.json` from the app and,
-  optionally, generates their `journalistennetzwerk/<author-id>.html` page from
-  `scripts/author_page_template.html` — the same page `build_post` will start adding
-  cards to automatically once it exists.
+- **Autor:innen** lists the `assets/blog/authors.json` registry (photo, role,
+  aliases, post count via `/api/authors`), registers new people (same
+  `/api/new-author` the post form's inline panel uses) and edits existing ones via
+  `/api/update-author`: role and aliases are a registry-only change; supplying a new
+  bio/photo regenerates `journalistennetzwerk/<author-id>.html` from
+  `scripts/author_page_template.html` (overwriting hand-made edits to that page —
+  the app warns first). Canonical name and id are immutable, since `posts.json`
+  references them. The generated page is the same one `build_post` starts adding
+  post cards to automatically once it exists.
 
 ## Common mistakes
 

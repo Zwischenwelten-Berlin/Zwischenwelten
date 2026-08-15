@@ -70,6 +70,14 @@ def _cover_path_for(slug):
     return matches[0] if matches else None
 
 
+def _author_photo_path(author_id):
+    """Absolute path to the author's photo under assets/autoren/, or None.
+    Same call-time publish_post.ROOT resolution as _cover_path_for."""
+    matches = glob.glob(os.path.join(publish_post.ROOT, "assets", "autoren",
+                                     f"{author_id}.*"))
+    return matches[0] if matches else None
+
+
 def run_git(*args):
     r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
     return r.returncode, (r.stdout + r.stderr).strip()
@@ -252,9 +260,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/":
             self.send_html(open(APP_HTML, encoding="utf-8").read())
-        elif path == "/api/posts":
+        elif path in ("/api/posts", "/api/authors"):
             try:
-                self.api_posts()
+                self.api_posts() if path == "/api/posts" else self.api_authors()
             except (ManuscriptError, PublishError) as e:
                 self.send_json({"ok": False, "error": str(e)})
             except Exception as e:                  # noqa: BLE001 — show, don't crash
@@ -297,6 +305,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.api_author_check(body)
             elif self.path == "/api/new-author":
                 self.api_new_author(body)
+            elif self.path == "/api/update-author":
+                self.api_update_author(body)
+            elif self.path == "/api/authors":
+                self.api_authors()
             elif self.path == "/api/posts":
                 self.api_posts(body)
             elif self.path == "/api/edit-load":
@@ -382,11 +394,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def api_posts(self, body=None):
         posts = publish_post.load_posts()["posts"]
+        registry = publish_post.load_authors()
 
         def entry(slug):
             e = dict(posts[slug], slug=slug)
             cover = _cover_path_for(slug)
             e["cover"] = "/" + os.path.relpath(cover, publish_post.ROOT) if cover else None
+            # Canonical author key for the list's author filter — resolved
+            # through the same fuzzy matcher publishing uses, so a
+            # translation's localized author form maps to the same person.
+            matched, _ = publish_post.match_author(e.get("author") or "", registry)
+            e["author_id"] = matched["id"] if matched else None
             return e
 
         originals = sorted(
@@ -399,7 +417,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 (entry(s) for s, t in posts.items() if t.get("original_slug") == slug),
                 key=lambda t: t["lang"])
             out.append(e)
-        self.send_json({"ok": True, "posts": out})
+        self.send_json({"ok": True, "posts": out,
+                        "langs": {c: cfg["label"] for c, cfg in LANGS.items()}})
 
     def api_edit_load(self, body):
         slug = body["slug"]
@@ -732,6 +751,113 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
             ok, stage, log = git_flow(files, f"content: Autor:in {name} registriert")
             self.send_json({"ok": True, "id": author_id, "canonical": name,
+                            "committed": ok, "git_output": log})
+        except PublishError as e:
+            self.send_json({"ok": False, "error": str(e)})
+
+    def api_authors(self):
+        # Registry entries enriched for the Autor:innen list: photo/page URLs
+        # (if the files exist) and how many posts resolve to this person.
+        # Post authors are matched through the same fuzzy matcher build_post
+        # uses, so translated name forms (e.g. "Сулейман Баг") count too.
+        registry = publish_post.load_authors()
+        posts = publish_post.load_posts()["posts"]
+        counts = {}
+        for e in posts.values():
+            entry, _ = publish_post.match_author(e.get("author") or "", registry)
+            if entry:
+                counts[entry["id"]] = counts.get(entry["id"], 0) + 1
+        out = []
+        for a in registry["authors"]:
+            photo = _author_photo_path(a["id"])
+            page = publish_post.author_page_path(a["id"])
+            out.append({
+                "id": a["id"], "canonical": a["canonical"],
+                "role": a.get("role") or "",
+                "aliases": a.get("aliases") or [], "names": a.get("names") or {},
+                "photo": "/" + os.path.relpath(photo, publish_post.ROOT) if photo else None,
+                "page": "/" + os.path.relpath(page, publish_post.ROOT)
+                    if os.path.exists(page) else None,
+                "post_count": counts.get(a["id"], 0),
+            })
+        self.send_json({"ok": True, "authors": out})
+
+    def api_update_author(self, body):
+        # Edit an existing registry entry: role and aliases always, plus an
+        # optional page regeneration (bio/photo) that overwrites
+        # journalistennetzwerk/<id>.html from the template. canonical and id
+        # are immutable — posts.json references them. Same rules as
+        # api_new_author: errors caught locally, everything validated before
+        # the first write so a bad photo never leaves a half-updated state.
+        try:
+            author_id = (body.get("id") or "").strip()
+            role = (body.get("role") or "").strip()
+            if not role:
+                raise PublishError("Rolle ist ein Pflichtfeld.")
+            registry = publish_post.load_authors()
+            entry = next((a for a in registry["authors"] if a["id"] == author_id), None)
+            if not entry:
+                raise PublishError(f"Autor:in '{author_id}' ist nicht im Register.")
+            aliases = body.get("aliases")
+            if aliases is not None:
+                if not isinstance(aliases, list):
+                    raise PublishError("Aliasse müssen eine Liste sein.")
+                aliases = [a.strip() for a in aliases if isinstance(a, str) and a.strip()]
+
+            page = body.get("page")
+            photo_bytes = photo_ext = None
+            photo_path = _author_photo_path(author_id)
+            if page:
+                if page.get("photo_b64"):
+                    photo_ext = (page.get("photo_ext") or ".png").lower()
+                    if photo_ext not in (".png", ".jpg", ".jpeg"):
+                        raise PublishError("Autorenfoto muss .png oder .jpg sein.")
+                    try:
+                        photo_bytes = base64.b64decode(page["photo_b64"], validate=True)
+                    except (TypeError, ValueError, binascii.Error):
+                        raise PublishError(
+                            "Autorenfoto ist beschädigt — bitte erneut auswählen.")
+                elif not photo_path:
+                    raise PublishError(
+                        "Kein Autorenfoto vorhanden — bitte eines auswählen.")
+
+            entry["role"] = role
+            if aliases is not None:
+                entry["aliases"] = aliases
+            with open(publish_post.AUTHORS, "w", encoding="utf-8") as fh:
+                json.dump(registry, fh, ensure_ascii=False, indent=2)
+                fh.write("\n")
+            files = [os.path.relpath(publish_post.AUTHORS, publish_post.ROOT)]
+
+            if page:
+                if photo_bytes is not None:
+                    photo_dir = os.path.join(publish_post.ROOT, "assets", "autoren")
+                    os.makedirs(photo_dir, exist_ok=True)
+                    new_photo = os.path.join(photo_dir, author_id + photo_ext)
+                    # A photo with a different extension would otherwise
+                    # survive next to the new one (and win the glob) —
+                    # remove it; `git add` on the missing path stages the
+                    # deletion.
+                    if photo_path and photo_path != new_photo:
+                        os.remove(photo_path)
+                        files.append(os.path.relpath(photo_path, publish_post.ROOT))
+                    with open(new_photo, "wb") as fh:
+                        fh.write(photo_bytes)
+                    photo_path = new_photo
+                    files.append(os.path.relpath(photo_path, publish_post.ROOT))
+                photo_rel = "/" + os.path.relpath(photo_path, publish_post.ROOT)
+                bio_paras = [p.strip() for p in (page.get("bio") or "").split("\n\n")]
+                html = publish_post.render_author_page(
+                    entry["canonical"], role, bio_paras, photo_rel)
+                apath = publish_post.author_page_path(author_id)
+                with open(apath, "w", encoding="utf-8") as fh:
+                    fh.write(html)
+                files.append(os.path.relpath(apath, publish_post.ROOT))
+
+            ok, stage, log = git_flow(
+                files, f"content: Autor:in {entry['canonical']} aktualisiert")
+            self.send_json({"ok": True, "id": author_id,
+                            "canonical": entry["canonical"],
                             "committed": ok, "git_output": log})
         except PublishError as e:
             self.send_json({"ok": False, "error": str(e)})
