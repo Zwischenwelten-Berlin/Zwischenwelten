@@ -8,6 +8,10 @@ image, review the pre-filled metadata, preview the exact page, publish to
 GitHub Pages. All rendering goes through publish_post.build_post, so the app
 can never produce different HTML than the CLI, and the fidelity gate always
 runs before anything is written.
+
+Beyond a fresh post, it also lists/edits/translates existing posts (backed by
+the assets/blog/manuscripts/ + posts.json registry, with a Markdown|Rich-Text
+tab pair for edits) and registers new authors with optional page generation.
 """
 
 import base64

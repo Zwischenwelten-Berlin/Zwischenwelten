@@ -54,6 +54,9 @@ Always `--dry-run` first. It reports the detected title, subtitle, author match 
 fidelity check without touching the repository. Re-run without `--dry-run` when the
 report looks right.
 
+To edit an already-published post, add `--update` (and `--slug` of the existing post);
+`--image` becomes optional and, if omitted, the existing cover is kept.
+
 ## Author pages
 
 Authors can have a profile page at `journalistennetzwerk/<author-id>.html`, where
@@ -102,6 +105,29 @@ for editors who prefer dropping a manuscript and cover in a browser over the CLI
 runs through the same `manuscript_import`/`publish_post.build_post` converter and
 fidelity gate described above, so it can never produce a different result than this
 skill.
+
+Beyond a fresh "Neuer Beitrag", the app also covers editing, translating, and author
+setup:
+
+- **Beiträge verwalten** lists every published post, with translations grouped under
+  their original. Every publish stores the manuscript at
+  `assets/blog/manuscripts/<slug>.md` and records the post in
+  `assets/blog/posts.json`; the list and the edit flow read from that registry, not
+  by scraping HTML. The CLI equivalent of editing is `python3 scripts/publish_post.py
+  --update` (image optional when updating — it keeps the existing cover unless a new
+  one is given).
+- **Bearbeiten** loads a post's stored manuscript back into the editor, either as
+  Markdown or on a Rich-Text tab (backed by `/api/md-to-html` and `/api/html-to-md`),
+  for a wording tweak followed by preview and re-publish. Posts published before this
+  registry existed, or otherwise missing a recoverable manuscript, are **locked**: the
+  app refuses to edit them (the underlying HTML would drift from any manuscript it
+  regenerated), but they can still receive translations.
+- **Übersetzung +** starts a new-language version of an existing post, slug forced to
+  `<original-slug>-<lang>`, same fidelity gate as any other publish.
+- **Neuer Autor** registers a person in `assets/blog/authors.json` from the app and,
+  optionally, generates their `journalistennetzwerk/<author-id>.html` page from
+  `scripts/author_page_template.html` — the same page `build_post` will start adding
+  cards to automatically once it exists.
 
 ## Common mistakes
 
