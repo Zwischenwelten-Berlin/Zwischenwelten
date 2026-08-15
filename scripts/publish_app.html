@@ -1083,16 +1083,25 @@ async function toRich() {
     markdown: document.getElementById("f-markdown").value,
     lang: document.getElementById("f-lang").value,
   });
-  if (!r.ok) { showError("screen-form", r.error); return false; }
+  if (!r.ok) { showEditorError(r.error); return false; }
   document.getElementById("f-rich").innerHTML = r.html;
   richActive = true;
   toggleTabs();
   return true;
 }
 
+// A failed tab conversion must be *visible*: the form-error banner sits at
+// the top of a long form, and the tabs at the bottom — without scrolling it
+// into view a failure looks like the tab silently doing nothing.
+function showEditorError(message) {
+  showError("screen-form", message);
+  const el = document.getElementById("form-error");
+  if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
 async function toMarkdown() {
   const r = await api("/api/html-to-md", { html: document.getElementById("f-rich").innerHTML });
-  if (!r.ok) { showError("screen-form", r.error); return false; }
+  if (!r.ok) { showEditorError(r.error); return false; }
   document.getElementById("f-markdown").value = r.markdown;
   richActive = false;
   toggleTabs();

@@ -252,12 +252,16 @@ def test_md_to_html_and_back_round_trips(repo, cover):
     assert r["author"] == "Süleyman Bağ"
 
 
-def test_md_to_html_missing_title_returns_german_error(repo):
+def test_md_to_html_missing_title_still_editable(repo):
+    # Superseded behavior: a missing '# Titel' used to be an error here, but
+    # that made the rich-text tab unusable for plain-text drafts. Now the
+    # fragment simply has no <h1>; the title requirement bites at preview.
     h = FakeHandler()
     h.api_md_to_html({"markdown": "Kein Titel hier.\n", "lang": "de"})
     _, payload = h.sent
-    assert payload["ok"] is False
-    assert payload["error"]
+    assert payload["ok"] is True
+    assert "<h1>" not in payload["html"]
+    assert "Kein Titel hier." in payload["html"]
 
 
 def test_html_to_md_preserves_structure_markers():
@@ -376,3 +380,37 @@ def test_git_flow_pull_failure_log_has_no_raw_sentinel(monkeypatch):
     assert not ok and stage == "pull"
     assert "\x00" not in log
     assert "Außerdem konnte der Rebase" in log
+
+
+def test_md_to_html_without_title_falls_back_to_body(repo):
+    # A plain-text manuscript (no '# Titel' line) must still open in the
+    # rich-text tab; the title requirement is enforced at preview/publish.
+    h = FakeHandler()
+    h.api_md_to_html({"markdown": "Nur ein Absatz.\n\nZweiter Absatz.",
+                      "lang": "de"})
+    _, payload = h.sent
+    assert payload["ok"], payload
+    assert "<h1>" not in payload["html"]
+    assert "Nur ein Absatz." in payload["html"]
+    h2 = FakeHandler()
+    h2.api_html_to_md({"html": payload["html"]})
+    _, p2 = h2.sent
+    assert p2["ok"]
+    assert "Nur ein Absatz." in p2["markdown"]
+    assert "Zweiter Absatz." in p2["markdown"]
+
+
+def test_pull_skipped_when_branch_has_no_upstream(monkeypatch):
+    calls = []
+
+    def fake_run_git(*args):
+        calls.append(args)
+        if args[0] == "rev-parse":
+            return 128, "fatal: no upstream configured for branch"
+        return 0, ""
+
+    monkeypatch.setattr(publish_app, "run_git", fake_run_git)
+    log = []
+    assert publish_app._pull(log) is True
+    assert not any(a[0] == "pull" for a in calls)
+    assert "keinen Upstream" in "\n".join(log)

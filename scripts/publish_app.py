@@ -113,6 +113,15 @@ def _pull(log):
     caller can fold it into its user-facing "pull" error message without
     it also polluting the git_output transcript shown verbatim in the UI.
     """
+    code, _ = run_git("rev-parse", "--abbrev-ref", "@{upstream}")
+    if code != 0:
+        # Branch without an upstream (fresh feature branch): there is
+        # nothing to pull, and `git pull` would abort the whole flow with
+        # "no tracking information". Skip it — the later `git push origin
+        # HEAD` creates the remote branch.
+        log.append("$ git pull --rebase --autostash\n(übersprungen: Branch hat "
+                   "keinen Upstream — nichts zu pullen)")
+        return True
     code, out = run_git("pull", "--rebase", "--autostash")
     log.append(f"$ git pull --rebase --autostash\n{out}")
     if code != 0:
@@ -486,10 +495,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         try:
             md, lang = body["markdown"], body.get("lang") or "de"
             byline = publish_post.find_author_in_md(md)
-            title, subtitle, body_md = publish_post.parse_md(md, lang)
-            parts = [f"<h1>{publish_post.esc(title)}</h1>"]
-            if subtitle:
-                parts.append(f"<p><em>{publish_post.esc(subtitle)}</em></p>")
+            try:
+                title, subtitle, body_md = publish_post.parse_md(md, lang)
+                parts = [f"<h1>{publish_post.esc(title)}</h1>"]
+                if subtitle:
+                    parts.append(f"<p><em>{publish_post.esc(subtitle)}</em></p>")
+            except PublishError:
+                # Draft without a '# Titel' line (typical for plain-text or
+                # docx imports): still editable as rich text — the whole
+                # manuscript is body. The title requirement is enforced
+                # where it matters, at preview/publish.
+                body_md = publish_post.BYLINE.sub("", md).lstrip("\n")
+                parts = []
             if byline:
                 parts.append(f"<p>Author: {publish_post.esc(byline)}</p>")
             parts.append(publish_post.md_to_blocks(body_md, lang))
