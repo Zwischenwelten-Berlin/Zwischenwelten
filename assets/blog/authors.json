@@ -15,7 +15,13 @@
         "ku": "Süleyman Bağ",
         "fa": "سلیمان باغ"
       },
-      "aliases": ["Suleyman Bag", "Süleyman Bag", "Suleyman Bağ", "S. Bağ", "Сулейман Баг"]
+      "aliases": [
+        "Suleyman Bag",
+        "Süleyman Bag",
+        "Suleyman Bağ",
+        "S. Bağ",
+        "Сулейман Баг"
+      ]
     },
     {
       "id": "dominique-hensel",
@@ -28,7 +34,10 @@
         "ru": "Доминик Хензель",
         "uk": "Домінік Хензель"
       },
-      "aliases": ["Доминик Хензель", "Домінік Хензель"]
+      "aliases": [
+        "Доминик Хензель",
+        "Домінік Хензель"
+      ]
     },
     {
       "id": "andrei-schnell",
@@ -40,7 +49,17 @@
         "ru": "Андрей Шнель",
         "uk": "Андрей Шнель"
       },
-      "aliases": ["Andrei Schnel", "Андрей Шнель"]
+      "aliases": [
+        "Andrei Schnel",
+        "Андрей Шнель"
+      ]
+    },
+    {
+      "id": "hayko-bagdat",
+      "canonical": "Hayko Bağdat",
+      "role": "Journalist, Schriftsteller und Kabarettist",
+      "names": {},
+      "aliases": []
     }
   ]
 }
