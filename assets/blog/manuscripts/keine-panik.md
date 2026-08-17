@@ -1,0 +1,21 @@
+# Keine Panik
+
+İstanbul’un o çok sesli kaosu ile Berlin’in "pazar günleri sessizlik kuralı" arasına sıkışmış bir sürgün hikayesi bu.
+
+Türkiye’de Erdoğan rejimiyle, sansürle ve sabahın köründe kapıya dayanabilecek polis korkusuyla mücadele ederken kendimi Berlin’de bulalı on yıl oldu bile. Demokrasi vadeden topraklara gelince derin bir "Oh!" çekeceğime emindim. Ne büyük saflıkmış... İstanbul’daki hiç bitmeyen kavgayı bırakıp, meğer küresel bir gladyatör arenasının tam ortasına atlamışım.
+
+Alman bürokrasisinin o meşhur, insanı hayattan soğutan "Anmeldung" sahibi olmak ve herhangi bir kurumdan randevu bulmak çilesiyle boğuşurken kafamı kaldırdığımda etrafımdaki dünyanın da çoktan çatırdadığını görüyorum artık. Tanıdık entelektüel çevrelerin yıllarca yere göğe sığdıramadığı "Kuzey Avrupa değerleri", "sosyal devlet" gibi büyük mücadelelerle kazanılmış hakların irice bir ekonomik kriz ve yükselen sağ popülizm karşısında nasıl darmadağın edildiğini üzüntüyle izliyorum. Almanya’da AfD’nin oy oranları tırmanırken, her şeye kurallar çerçevesinde yaklaşan soğukkanlı Alman halkının yüzünde tanıdık bir endişe görüyorum. Eskiden sadece bizim oralarda olur sandığımız "ülke nereye gidiyor?" sorgusu şimdi Berlin’deki sanatçı kafelerinde, yapılıyor.
+
+Yeni bir ülkede sıfırdan hayat kurmak zaten başlı başına absürt bir komedi. Türkiye’de yıllarca gazetecilik yapmış, kitaplar yazmış, kitlelere seslenmiş biri olarak burada kendimi yeniden kanıtlamak zorundayım. Üstelik bunu, her kelimenin artikeli (der, die, das) için ayrı bir varoluşsal kriz yaşadığım Almancanın gölgesinde yapıyorum. Ev bulabilmek için sanki böbreğimi bağışlayacakmış gibi banka dökümünden tutun da şecere kaydına kadar evrak topluyorum. Geçmişteki kariyerinin, buradaki bir emlakçı gözünde "düzenli geliri olmayan şüpheli yabancı" statüsünden öteye geçmediğini görmek harika bir ego törpüsü!
+
+İşte tam bu tespitlerin, bu deliliğin ortasında sahneye çıkıyorum. Olan biteni komediye sığınarak anlatıyorum. Salon ışıkları söndüğünde, yaşadığım bu kültürel şoku ve küresel çaresizliği kendi dilimde mizahla harmanlayıp anlatıyorum. Çünkü biliyorum ki, faşizmin ve absürtlüğün panzehiri birlikte gülmektir.
+
+Peki ya Almanlar? Onlarla karşılaşmam sahnede değil, bu ülkenin geleceği için omuz omuza verdiğimiz sokaklarda oluyor. Geçenlerde aşırı sağa karşı düzenlenen devasa bir Berlin mitinginde, ellerinde "Faşizme geçit yok" pankartlarıyla yürüyen, bu ülkenin vicdanı olan şahane insanlarla yan yanaydım. Yanımdaki Alman aktivist, benim Türkiye’den gelen bir gazeteci olduğumu öğrenince yüzünde hem derin bir mahcubiyet hem de tanıdık bir yoldaşlık ifadesi belirdi. Bana dönüp, *"Siz oradaki baskılardan kaçıp buraya sığındınız ama biz kendi evimizi bile koruyamıyoruz, çok üzgünüm"* dedi. O an o kadar evrensel, o kadar içten bir empatiydi ki bu... Tıpkı bizim Gezi’de, İstanbul sokaklarında hissettiğimiz o omuz omuza olma arzusu gibiydi. Onlar kendi evlerini, bir arada yaşama kültürünü korumak için direniyor; biz ise kaybettiğimiz evi burada onlarla yeniden inşa etmeye çalışıyoruz. Bizim buradaki varlığımız artık sadece bir sığınma hikayesi değil, bu ülkenin demokratlarıyla kurduğumuz bir sokak barikatı, bir kader birliği hikayesidir.
+
+Oyunun tam ortasında, salon kahkahayla dinlerken zihnimde hep o ses yankılanıyor. Annemin sesi. Türkiye’den ayrılırken bavulumu toplayan o kadının, "Oğlum, buralarda koşturduğun yetmedi mi? Uzak memleketlerde sana rahat mı verecekler? Dünya her yerde aynı dünya, gitme"
+
+Erdoğan’ın baskısından kaçıp Berlin’e sığınmak ama burada da Avrupa’nın göbeğindeki aşırı sağ dalgasıyla, yabancı düşmanlığıyla yüzleşmek... Tam güvende hissettiğin anda, bastığın toprağın da kaydığını görmek... Sahne ışıklarının altında, elimde mikrofonla içimden o malum soruyu soruyorum: "Yoksa annem mi haklıydı?"
+
+Belki de haklıydı; dünya her yerde aynı derecede delirdi. Ama bu tespit bizi eve kapatmamalı. Aksine, nerede olursak olalım adaletsizliğe karşı mizahla, yazıyla ve sokakta dik durarak mücadele etmemiz gerektiğini göstermeli.
+
+Bu topraklarda demokrasi ve eşitlik için yanyana duran, bizimle aynı kaygıyı ve umudu paylaşan yeni dostlarımız var artık. Biz sadece yerel bir kavgadan, dünya kupası finallerine terfi ettik. Cephe büyüdü, komedi derinleşti, yeni yol arkadaşlarıyla mücadeleye devam!

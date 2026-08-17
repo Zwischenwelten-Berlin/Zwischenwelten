@@ -107,6 +107,18 @@
       "caption": null,
       "original_slug": null,
       "locked": false
+    },
+    "keine-panik": {
+      "title": "Keine Panik",
+      "lang": "tr",
+      "date": "2026-08-17",
+      "author": "Hayko Bağdat",
+      "tag": null,
+      "highlight": null,
+      "alt": null,
+      "caption": null,
+      "original_slug": null,
+      "locked": false
     }
   }
 }
