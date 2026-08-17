@@ -78,6 +78,30 @@ def _author_photo_path(author_id):
     return matches[0] if matches else None
 
 
+def _read_network_page():
+    """journalistennetzwerk.html's current markup; call-time path resolution
+    like _cover_path_for. Missing file is a PublishError so author flows
+    refuse before writing anything."""
+    try:
+        with open(publish_post.NETWORK_PAGE, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError:
+        raise PublishError(
+            "journalistennetzwerk.html fehlt — "
+            "Mitgliederliste kann nicht aktualisiert werden.")
+
+
+def _write_network_page(net_update):
+    """Apply a (html, changed) pair from link_network_member; returns the
+    repo-relative paths to stage (empty when the page already linked)."""
+    html, changed = net_update
+    if not changed:
+        return []
+    with open(publish_post.NETWORK_PAGE, "w", encoding="utf-8") as fh:
+        fh.write(html)
+    return [os.path.relpath(publish_post.NETWORK_PAGE, publish_post.ROOT)]
+
+
 def run_git(*args):
     r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
     return r.returncode, (r.stdout + r.stderr).strip()
@@ -714,7 +738,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # permanently half-registered, since a retry would just hit
             # the "already registered" refusal above with no way back in.
             page = body.get("page")
-            photo_bytes = photo_ext = None
+            photo_bytes = photo_ext = net_update = None
             if page:
                 photo_ext = (page.get("photo_ext") or ".png").lower()
                 if photo_ext not in (".png", ".jpg", ".jpeg"):
@@ -724,6 +748,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except (KeyError, TypeError, ValueError, binascii.Error):
                     raise PublishError(
                         "Autorenfoto fehlt oder ist beschädigt — bitte erneut auswählen.")
+                # The members grid on journalistennetzwerk.html must link to
+                # the new page; computed here (still validation phase) so a
+                # broken grid aborts before authors.json gains the entry.
+                net_update = publish_post.link_network_member(
+                    _read_network_page(), name, role, author_id)
 
             registry["authors"].append({
                 "id": author_id, "canonical": name, "role": role,
@@ -748,6 +777,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     fh.write(html)
                 files += [os.path.relpath(apath, publish_post.ROOT),
                          os.path.relpath(photo_path, publish_post.ROOT)]
+                files += _write_network_page(net_update)
 
             ok, stage, log = git_flow(files, f"content: Autor:in {name} registriert")
             self.send_json({"ok": True, "id": author_id, "canonical": name,
@@ -805,9 +835,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 aliases = [a.strip() for a in aliases if isinstance(a, str) and a.strip()]
 
             page = body.get("page")
-            photo_bytes = photo_ext = None
+            photo_bytes = photo_ext = net_update = None
             photo_path = _author_photo_path(author_id)
             if page:
+                # Page regeneration implies a linkable page — make sure the
+                # members grid on journalistennetzwerk.html points to it.
+                net_update = publish_post.link_network_member(
+                    _read_network_page(), entry["canonical"], role, author_id)
                 if page.get("photo_b64"):
                     photo_ext = (page.get("photo_ext") or ".png").lower()
                     if photo_ext not in (".png", ".jpg", ".jpeg"):
@@ -853,6 +887,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 with open(apath, "w", encoding="utf-8") as fh:
                     fh.write(html)
                 files.append(os.path.relpath(apath, publish_post.ROOT))
+                files += _write_network_page(net_update)
 
             ok, stage, log = git_flow(
                 files, f"content: Autor:in {entry['canonical']} aktualisiert")

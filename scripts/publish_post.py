@@ -34,6 +34,7 @@ AUTHORS = os.path.join(IMG_DIR, "authors.json")
 MANUSCRIPTS_DIR = os.path.join(IMG_DIR, "manuscripts")
 POSTS_JSON = os.path.join(IMG_DIR, "posts.json")
 AUTHOR_PAGES_DIR = os.path.join(ROOT, "journalistennetzwerk")
+NETWORK_PAGE = os.path.join(ROOT, "journalistennetzwerk.html")
 SITE = "https://zwischenwelten-berlin.de"
 
 
@@ -641,6 +642,35 @@ def render_author_page(name, role, bio_paragraphs, photo_rel):
 
 def author_page_path(author_id):
     return os.path.join(AUTHOR_PAGES_DIR, f"{author_id}.html")
+
+
+def link_network_member(page_html, name, role, author_id):
+    """Make sure the Journalistennetzwerk members grid links to the author's
+    page. Returns (html, changed): an existing card for the name gets the
+    "Mehr erfahren" link appended, a missing card is created at the end of
+    the grid, and a card that already links stays untouched.
+    """
+    link = ('              <a class="info-more" href="/journalistennetzwerk/'
+            f"{author_id}\">Mehr erfahren &amp; Beiträge →</a>\n")
+    card = re.search(
+        rf'([ \t]*<article class="info-card">\s*<h3>{re.escape(esc(name))}</h3>.*?)'
+        r'([ \t]*</article>)',
+        page_html, re.S)
+    if card:
+        if 'class="info-more"' in card.group(1):
+            return page_html, False
+        return page_html[:card.end(1)] + link + page_html[card.end(1):], True
+    grid = re.search(r'<div class="card-grid">(.*?)\n[ \t]*</div>', page_html, re.S)
+    if not grid:
+        raise PublishError(
+            "journalistennetzwerk.html hat kein card-grid — "
+            "Mitgliederkarte kann nicht eingefügt werden.")
+    new_card = ('\n\n            <article class="info-card">\n'
+                f"              <h3>{esc(name)}</h3>\n"
+                f'              <p class="info-role">{esc(role)}</p>\n'
+                f"{link}"
+                "            </article>")
+    return page_html[:grid.end(1)] + new_card + page_html[grid.end(1):], True
 
 
 def upsert_author_card(page_html, card, slug):

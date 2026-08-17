@@ -185,6 +185,53 @@ def test_new_author_registers_and_builds_page(repo, monkeypatch):
     assert (repo / "assets" / "autoren" / "ayse-ornek.png").exists()
 
 
+def test_new_author_with_page_links_network_card(repo, monkeypatch):
+    calls = {}
+    def fake_git_flow(files, msg):
+        calls["files"] = files
+        return True, "", "ok"
+    monkeypatch.setattr(publish_app, "git_flow", fake_git_flow)
+    (repo / "assets" / "autoren").mkdir(parents=True)
+    h = FakeHandler()
+    h.api_new_author({"canonical": "Ayşe Örnek", "role": "Journalistin",
+                      "page": {"bio": "Absatz eins.",
+                               "photo_b64": COVER_PNG_B64, "photo_ext": ".png"}})
+    _, payload = h.sent
+    assert payload["ok"], payload
+    html = (repo / "journalistennetzwerk.html").read_text(encoding="utf-8")
+    assert 'href="/journalistennetzwerk/ayse-ornek"' in html
+    assert "journalistennetzwerk.html" in calls["files"]
+
+
+def test_new_author_without_page_leaves_network_page_alone(repo, monkeypatch):
+    monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
+    h = FakeHandler()
+    h.api_new_author({"canonical": "Yeni Kişi", "role": "Journalist"})
+    _, payload = h.sent
+    assert payload["ok"], payload
+    # without an author page there is nothing to link to — the members
+    # grid must stay untouched
+    assert "yeni-kisi" not in (repo / "journalistennetzwerk.html").read_text(encoding="utf-8")
+
+
+def test_update_author_with_page_links_network_card(repo, monkeypatch):
+    calls = {}
+    def fake_git_flow(files, msg):
+        calls["files"] = files
+        return True, "", "ok"
+    monkeypatch.setattr(publish_app, "git_flow", fake_git_flow)
+    (repo / "assets" / "autoren").mkdir(parents=True)
+    h = FakeHandler()
+    h.api_update_author({"id": "dominique-hensel", "role": "Chefredakteurin",
+                         "page": {"bio": "Absatz eins.",
+                                  "photo_b64": COVER_PNG_B64, "photo_ext": ".png"}})
+    _, payload = h.sent
+    assert payload["ok"], payload
+    html = (repo / "journalistennetzwerk.html").read_text(encoding="utf-8")
+    assert 'href="/journalistennetzwerk/dominique-hensel"' in html
+    assert "journalistennetzwerk.html" in calls["files"]
+
+
 def test_new_author_refuses_known_person(repo, monkeypatch):
     monkeypatch.setattr(publish_app, "git_flow", lambda files, msg: (True, "", "ok"))
     h = FakeHandler()

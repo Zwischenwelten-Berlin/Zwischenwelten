@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -58,12 +59,29 @@ INDEX_MIN = """<html><body>
 </body></html>"""
 
 
+NETWORK_MIN = """<html><body>
+          <div class="card-grid">
+            <article class="info-card">
+              <h3>Süleyman Bağ</h3>
+              <p class="info-role">Journalist</p>
+              <a class="info-more" href="/journalistennetzwerk/suleyman-bag">Mehr erfahren &amp; Beiträge →</a>
+            </article>
+
+            <article class="info-card">
+              <h3>Ayşe Örnek</h3>
+              <p class="info-role">Journalistin</p>
+            </article>
+          </div>
+</body></html>"""
+
+
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     (tmp_path / "aktuelles").mkdir()
     (tmp_path / "assets" / "blog").mkdir(parents=True)
     (tmp_path / "journalistennetzwerk").mkdir()
     (tmp_path / "aktuelles" / "index.html").write_text(INDEX_MIN, encoding="utf-8")
+    (tmp_path / "journalistennetzwerk.html").write_text(NETWORK_MIN, encoding="utf-8")
     shutil.copyfile(publish_post.AUTHORS, tmp_path / "assets" / "blog" / "authors.json")
     monkeypatch.setattr(publish_post, "ROOT", str(tmp_path))
     monkeypatch.setattr(publish_post, "POSTS_DIR", str(tmp_path / "aktuelles"))
@@ -73,6 +91,7 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setattr(publish_post, "MANUSCRIPTS_DIR", str(tmp_path / "assets" / "blog" / "manuscripts"))
     monkeypatch.setattr(publish_post, "POSTS_JSON", str(tmp_path / "assets" / "blog" / "posts.json"))
     monkeypatch.setattr(publish_post, "AUTHOR_PAGES_DIR", str(tmp_path / "journalistennetzwerk"))
+    monkeypatch.setattr(publish_post, "NETWORK_PAGE", str(tmp_path / "journalistennetzwerk.html"))
     return tmp_path
 
 
@@ -255,3 +274,43 @@ def test_render_author_page_escapes_quotes_in_attributes(repo):
         'Foo "Bar" Baz', "Journalist", ["Bio."], "/assets/autoren/x.png")
     assert 'alt="Foo &quot;Bar&quot; Baz"' in html
     assert '"Bar"' not in html
+
+
+def member_card(html, name):
+    m = re.search(
+        rf'<article class="info-card">\s*<h3>{name}</h3>.*?</article>', html, re.S)
+    return m.group(0) if m else None
+
+
+def test_link_network_member_adds_link_to_existing_card():
+    html, changed = publish_post.link_network_member(
+        NETWORK_MIN, "Ayşe Örnek", "Journalistin", "ayse-ornek")
+    assert changed
+    card = member_card(html, "Ayşe Örnek")
+    assert ('<a class="info-more" href="/journalistennetzwerk/ayse-ornek">'
+            "Mehr erfahren &amp; Beiträge →</a>") in card
+    # the neighbouring card keeps exactly one link
+    assert member_card(html, "Süleyman Bağ").count("info-more") == 1
+
+
+def test_link_network_member_leaves_already_linked_card_alone():
+    html, changed = publish_post.link_network_member(
+        NETWORK_MIN, "Süleyman Bağ", "Journalist", "suleyman-bag")
+    assert not changed
+    assert html == NETWORK_MIN
+
+
+def test_link_network_member_appends_card_for_unknown_name():
+    html, changed = publish_post.link_network_member(
+        NETWORK_MIN, "Neue Person", "Neue Rolle", "neue-person")
+    assert changed
+    card = member_card(html, "Neue Person")
+    assert '<p class="info-role">Neue Rolle</p>' in card
+    assert 'href="/journalistennetzwerk/neue-person"' in card
+    # the new card sits inside the grid, before its closing </div>
+    assert html.index(card) < html.index("</div>")
+
+
+def test_link_network_member_without_grid_raises():
+    with pytest.raises(publish_post.PublishError):
+        publish_post.link_network_member("<html></html>", "X", "Rolle", "x")
