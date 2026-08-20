@@ -119,6 +119,18 @@
       "caption": null,
       "original_slug": null,
       "locked": false
+    },
+    "keine-panik-de": {
+      "title": "Keine Panik",
+      "lang": "de",
+      "date": "2026-08-20",
+      "author": "Hayko Bağdat",
+      "tag": null,
+      "highlight": null,
+      "alt": "Keine Panik",
+      "caption": null,
+      "original_slug": "keine-panik",
+      "locked": false
     }
   }
 }
