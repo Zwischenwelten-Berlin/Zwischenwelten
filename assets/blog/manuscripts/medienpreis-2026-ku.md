@@ -1,6 +1,6 @@
 # Medyaya Zwischenwelten Dê Cara Ewil Xelatên Rojnamevanî Belav Dike
 
-Author: Süleyman Bağ
+Author: Redaktion
 
 Pêşbirk dê ser xalên wekî; Rojnamevanî dê çawa bikare ku civaka piştî koçberiyê bi hevgirtineke xurt bikare hevra bisekine? Kîjan çîrok dê li hember kutbûna têkilîyan bide rawastin û civakbûnê teşwîq bike? Gelo li Almanyayê rasteqîna jiyanên ji hevdû cûda dê çawa bikare xwe di medyayê de xwe nîşan bide? Ol çawa dikare alîkariya çanda jiyana bi hev re bike?
 

@@ -460,7 +460,7 @@ PAGE = """<!DOCTYPE html>
     "datePublished":"{iso_date}",
     "inLanguage":"{lang}",
     "author":{{
-      "@type":"Person",
+      "@type":"{author_type}",
       "name":"{author}"
     }},
     "publisher":{{
@@ -593,9 +593,12 @@ CARD = """            <a class="post-card" href="/aktuelles/{slug}" data-lang="{
             </a>
 """
 
-AUTHOR_CARD = """            <a class="post-card" href="/aktuelles/{slug}">
+AUTHOR_CARD = """            <a class="post-card" href="/aktuelles/{slug}" data-lang="{lang}" hreflang="{lang}" lang="{lang}">
               <div class="post-thumb">
                 <img src="{cover}" alt="{alt}" loading="lazy"{dims}>
+                <div class="post-badges">
+                  <span class="post-lang-badge"><span class="dot" aria-hidden="true"></span>{lang_label}</span>{translation_badge}
+                </div>
               </div>
               <div class="post-info">
                 <p class="post-meta">
@@ -607,6 +610,11 @@ AUTHOR_CARD = """            <a class="post-card" href="/aktuelles/{slug}">
               </div>
             </a>
 """
+
+# Marks a card on the author page as a translation of one of their originals.
+# Always German — the author page itself is German, unlike the post it links to.
+TRANSLATION_BADGE = (
+    '\n                  <span class="post-translation-badge">Übersetzung</span>')
 
 
 AUTHOR_PAGE_TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -673,12 +681,35 @@ def link_network_member(page_html, name, role, author_id):
     return page_html[:grid.end(1)] + new_card + page_html[grid.end(1):], True
 
 
-def upsert_author_card(page_html, card, slug):
+def upsert_author_card(page_html, card, slug, original_slug=None):
+    """Insert or replace one post's card on an author page.
+
+    A card that is already there is replaced where it stands. A translation is
+    grouped under its original, after any siblings already sitting there, so a
+    post and its translations stay together; everything else goes to the top of
+    the grid. Falls back to the top when the original has no card on this page
+    (it may belong to a different author, or predate the page).
+    """
     existing = re.search(
         rf'[ \t]*<a class="post-card" href="/aktuelles/{re.escape(slug)}".*?</a>\n',
         page_html, re.S)
     if existing:
         return page_html[:existing.start()] + card + page_html[existing.end():]
+
+    if original_slug:
+        orig = re.search(
+            rf'[ \t]*<a class="post-card" href="/aktuelles/{re.escape(original_slug)}".*?</a>\n',
+            page_html, re.S)
+        if orig:
+            sibling = re.compile(r'\n[ \t]*<a class="post-card" .*?</a>\n', re.S)
+            pos = orig.end()
+            while True:
+                m = sibling.match(page_html, pos)
+                if not m or "post-translation-badge" not in m.group(0):
+                    break
+                pos = m.end()
+            return page_html[:pos] + "\n" + card + page_html[pos:]
+
     anchor = re.search(r'<div class="posts-grid">\n', page_html)
     if not anchor:
         raise PublishError("Autorenseite hat kein posts-grid — Karte kann nicht eingefügt werden.")
@@ -772,11 +803,14 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         author_display = entry.get("names", {}).get(lang) or entry["canonical"]
         author_canonical = entry["canonical"]
         author_id = entry["id"]
+        # a desk/team byline ("Redaktion") is an Organization in schema.org
+        author_is_org = bool(entry.get("org"))
         info(f"Author: '{name}' → known author {entry['canonical']} "
              f"(match {score:.0%}), using '{author_display}' for {lang}.")
     else:
         author_display = name
         author_canonical = None
+        author_is_org = False
         if not new_author:
             raise PublishError(
                 f"'{name}' does not match any known author (closest {score:.0%}).\n"
@@ -856,6 +890,7 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         description=esc(description).replace('"', "&quot;"),
         tag_html=f'\n              <span class="article-tag">{esc(tag)}</span>' if tag else "",
         iso_date=date, date_label=date_label, author=esc(author_display),
+        author_type="Organization" if author_is_org else "Person",
         lang_label=cfg["label"], cover=cover_rel, dims=dims,
         alt=esc(alt or title).replace('"', "&quot;"),
         caption_html=f'\n              <figcaption>{esc(caption)}</figcaption>' if caption else "",
@@ -893,10 +928,11 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         files.append(os.path.relpath(old_cover_path, ROOT))
 
     # ---- author page --------------------------------------------------------
-    # Translations never get a card on the author page; only the original does.
+    # Originals and translations both get a card; translations are marked with
+    # an extra "Übersetzung" badge so the list stays readable.
     author_page_rel = None
     apath = author_page_path(author_id) if author_id else None
-    if apath and os.path.exists(apath) and not original_slug:
+    if apath and os.path.exists(apath):
         author_page_rel = os.path.relpath(apath, ROOT)
         files.append(author_page_rel)
 
@@ -942,14 +978,17 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
 
         if author_page_rel:
             acard = AUTHOR_CARD.format(
-                slug=post_slug, cover=cover_rel, dims=dims,
+                slug=post_slug, lang=lang, cover=cover_rel, dims=dims,
                 alt=esc(alt or title).replace('"', "&quot;"),
+                lang_label=cfg["label"],
+                translation_badge=TRANSLATION_BADGE if original_slug else "",
                 iso_date=date, date_label=date_label, title_plain=esc(title),
                 excerpt=esc(teaser(subtitle, body)), read_more=cfg["read_more"],
             )
             page_html_author = open(apath, encoding="utf-8").read()
             with open(apath, "w", encoding="utf-8") as fh:
-                fh.write(upsert_author_card(page_html_author, acard, post_slug))
+                fh.write(upsert_author_card(page_html_author, acard, post_slug,
+                                            original_slug))
 
     return {
         "slug": post_slug, "title": title, "subtitle": subtitle,

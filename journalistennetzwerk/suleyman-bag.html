@@ -137,6 +137,50 @@
 
     .post-card:hover .post-thumb img{ transform:scale(1.04); }
 
+    .post-badges{
+      position:absolute;
+      top:14px;
+      right:14px;
+      z-index:2;
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      gap:6px;
+    }
+
+    .post-lang-badge,
+    .post-translation-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-size:11px;
+      font-weight:600;
+      letter-spacing:0.12em;
+      text-transform:uppercase;
+      padding:6px 10px;
+      border-radius:999px;
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
+      border:1px solid rgba(255,255,255,0.18);
+    }
+
+    .post-lang-badge{
+      color:#fff;
+      background:rgba(18,63,122,0.6);
+    }
+
+    .post-lang-badge .dot{
+      width:5px; height:5px;
+      border-radius:50%;
+      background:var(--accent);
+    }
+
+    .post-translation-badge{
+      color:#fff;
+      background:rgba(226,133,30,0.85);
+      border-color:rgba(255,255,255,0.24);
+    }
+
     .post-info{
       padding:20px 22px 22px;
       display:flex;
@@ -257,30 +301,19 @@
 
           <div class="posts-grid">
 
-            <a class="post-card" href="/aktuelles/wem-gehort-berlin">
+            <a class="post-card" href="/aktuelles/wem-gehort-berlin" data-lang="de" hreflang="de" lang="de">
               <div class="post-thumb">
                 <img src="/assets/blog/wem-gehort-berlin-cover.png" alt="Wem gehört Berlin?" loading="lazy" width="1536" height="1024">
+                <div class="post-badges">
+                  <span class="post-lang-badge"><span class="dot" aria-hidden="true"></span>Deutsch</span>
+                </div>
               </div>
               <div class="post-info">
                 <p class="post-meta">
                   <time datetime="2026-08-10">10. August 2026</time>
                 </p>
                 <h3 class="post-title">Wem gehört Berlin?</h3>
-                <p class="post-excerpt">Der Kampf um bezahlbares Wohnen und das Versprechen der Politik – von einer Erfolgsgeschichte zu einer sozialen Belastung.</p>
-                <span class="post-cta">Weiterlesen →</span>
-              </div>
-            </a>
-
-            <a class="post-card" href="/aktuelles/medienpreis-2026">
-              <div class="post-thumb">
-                <img src="/assets/blog/medienpreis-2026-cover.jpg" alt="Plakat des Zwischenwelten Medienpreis 2026" loading="lazy" width="1280" height="905">
-              </div>
-              <div class="post-info">
-                <p class="post-meta">
-                  <time datetime="2026-07-16">16. Juli 2026</time>
-                </p>
-                <h3 class="post-title">Erster Zwischenwelten Medienpreis startet</h3>
-                <p class="post-excerpt">Auszeichnung für Journalismus in der postmigrantischen Gesellschaft: Der Zwischenwelten Medienpreis 2026 wird erstmals ausgelobt.</p>
+                <p class="post-excerpt">*Der Kampf um bezahlbares Wohnen und das Versprechen der Politik – von einer Erfolgsgeschichte zu einer sozialen Belastung*: Von Süleyman Bağ</p>
                 <span class="post-cta">Weiterlesen →</span>
               </div>
             </a>

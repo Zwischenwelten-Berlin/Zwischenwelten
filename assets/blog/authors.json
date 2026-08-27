@@ -60,6 +60,28 @@
       "role": "Journalist, Schriftsteller und Kabarettist",
       "names": {},
       "aliases": []
+    },
+    {
+      "id": "redaktion",
+      "canonical": "Redaktion",
+      "role": "Redaktion ZWISCHENWELTEN",
+      "org": true,
+      "names": {
+        "de": "Redaktion",
+        "en": "Redaktion",
+        "tr": "Redaktion",
+        "ru": "Redaktion",
+        "uk": "Redaktion",
+        "ar": "Redaktion",
+        "ku": "Redaktion",
+        "fa": "Redaktion"
+      },
+      "aliases": [
+        "ZWISCHENWELTEN Redaktion",
+        "Redaktion ZWISCHENWELTEN",
+        "Die Redaktion",
+        "Zwischenwelten Redaktion"
+      ]
     }
   ]
 }

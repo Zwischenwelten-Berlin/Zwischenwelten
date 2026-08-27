@@ -184,12 +184,82 @@ def test_publish_adds_card_to_author_page(repo, cover, author_page):
     assert r["author_page"] == "journalistennetzwerk/suleyman-bag.html"
 
 
-def test_translation_skips_author_page(repo, cover, author_page):
-    before = author_page.read_text(encoding="utf-8")
+def test_desk_byline_is_an_organization(repo, cover):
+    r = publish_post.build_post(MD, cover, lang="de", date="2026-08-03",
+                                author="Redaktion", write=False)
+    assert r["author"] == "Redaktion"
+    assert '"@type":"Organization",\n      "name":"Redaktion"' in r["page_html"]
+    # the desk has no author page, so nothing is linked in the network
+    assert r["author_page"] is None
+
+
+def test_desk_byline_keeps_german_name_in_every_language(repo, cover):
+    for lang in ("tr", "ru", "ar", "fa"):
+        r = publish_post.build_post(MD, cover, lang=lang, date="2026-08-03",
+                                    author="Redaktion", write=False)
+        assert r["author"] == "Redaktion", lang
+
+
+def test_person_byline_stays_a_person(repo, cover):
+    r = publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=False)
+    # only the author block may change type; the publisher stays an Organization
+    author_block = re.search(r'"author":\{.*?\}', r["page_html"], re.S).group(0)
+    assert '"@type":"Person"' in author_block
+    assert "Organization" not in author_block
+    assert '"publisher":{\n      "@type":"Organization"' in r["page_html"]
+
+
+def test_translation_gets_author_page_card(repo, cover, author_page):
     r = publish_post.build_post(MD, cover, lang="tr", date="2026-08-03",
                                 slug="ein-test-tr", original_slug="ein-test", write=True)
-    assert author_page.read_text(encoding="utf-8") == before
-    assert r["author_page"] is None
+    html = author_page.read_text(encoding="utf-8")
+    assert '/aktuelles/ein-test-tr"' in html
+    assert r["author_page"] == "journalistennetzwerk/suleyman-bag.html"
+    # a translation carries both its language badge and the Übersetzung marker
+    card = re.search(r'<a class="post-card" href="/aktuelles/ein-test-tr".*?</a>',
+                     html, re.S).group(0)
+    assert '>Türkçe</span>' in card
+    assert '<span class="post-translation-badge">Übersetzung</span>' in card
+
+
+def test_translation_is_grouped_under_its_original(repo, cover, author_page):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.build_post(MD, cover, lang="tr", date="2026-08-04",
+                            slug="ein-test-tr", original_slug="ein-test", write=True)
+    publish_post.build_post(MD, cover, lang="ru", date="2026-08-05",
+                            slug="ein-test-ru", original_slug="ein-test", write=True)
+    # a later, unrelated original still lands on top of the grid
+    publish_post.build_post(MD.replace("# Ein Test", "# Zweiter Test"), cover,
+                            lang="de", date="2026-08-06", write=True)
+    html = author_page.read_text(encoding="utf-8")
+    order = re.findall(r'<a class="post-card" href="/aktuelles/([^"]+)"', html)
+    assert order == ["zweiter-test", "ein-test", "ein-test-tr", "ein-test-ru",
+                     "alter-beitrag"]
+
+
+def test_regrouping_an_edited_translation_keeps_its_place(repo, cover, author_page):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.build_post(MD, cover, lang="tr", date="2026-08-04",
+                            slug="ein-test-tr", original_slug="ein-test", write=True)
+    publish_post.build_post(MD, cover, lang="ru", date="2026-08-05",
+                            slug="ein-test-ru", original_slug="ein-test", write=True)
+    changed = MD.replace("Erster Absatz", "Geänderter Absatz")
+    publish_post.build_post(changed, None, lang="tr", date="2026-08-04",
+                            slug="ein-test-tr", original_slug="ein-test",
+                            update=True, write=True)
+    html = author_page.read_text(encoding="utf-8")
+    order = re.findall(r'<a class="post-card" href="/aktuelles/([^"]+)"', html)
+    assert order == ["ein-test", "ein-test-tr", "ein-test-ru", "alter-beitrag"]
+    assert html.count('href="/aktuelles/ein-test-tr"') == 1
+
+
+def test_original_has_no_translation_badge(repo, cover, author_page):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    html = author_page.read_text(encoding="utf-8")
+    card = re.search(r'<a class="post-card" href="/aktuelles/ein-test".*?</a>',
+                     html, re.S).group(0)
+    assert '>Deutsch</span>' in card
+    assert "post-translation-badge" not in card
 
 
 def test_no_author_page_is_fine(repo, cover):
@@ -264,9 +334,13 @@ def test_render_author_page(repo):
     assert "transform:scale(2.6)" not in html
     # the generated grid must accept cards
     card = publish_post.AUTHOR_CARD.format(
-        slug="x", cover="/c.png", dims="", alt="", iso_date="2026-01-01",
+        slug="x", lang="de", cover="/c.png", dims="", alt="", lang_label="Deutsch",
+        translation_badge="", iso_date="2026-01-01",
         date_label="1. Januar 2026", title_plain="X", excerpt="", read_more="Weiterlesen")
     assert "/aktuelles/x" in publish_post.upsert_author_card(html, card, "x")
+    # the template must carry the badge CSS the cards rely on
+    assert ".post-badges{" in html
+    assert ".post-translation-badge{" in html
 
 
 def test_render_author_page_escapes_quotes_in_attributes(repo):

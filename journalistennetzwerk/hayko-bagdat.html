@@ -134,6 +134,50 @@
 
     .post-card:hover .post-thumb img{ transform:scale(1.04); }
 
+    .post-badges{
+      position:absolute;
+      top:14px;
+      right:14px;
+      z-index:2;
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      gap:6px;
+    }
+
+    .post-lang-badge,
+    .post-translation-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-size:11px;
+      font-weight:600;
+      letter-spacing:0.12em;
+      text-transform:uppercase;
+      padding:6px 10px;
+      border-radius:999px;
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
+      border:1px solid rgba(255,255,255,0.18);
+    }
+
+    .post-lang-badge{
+      color:#fff;
+      background:rgba(18,63,122,0.6);
+    }
+
+    .post-lang-badge .dot{
+      width:5px; height:5px;
+      border-radius:50%;
+      background:var(--accent);
+    }
+
+    .post-translation-badge{
+      color:#fff;
+      background:rgba(226,133,30,0.85);
+      border-color:rgba(255,255,255,0.24);
+    }
+
     .post-info{
       padding:20px 22px 22px;
       display:flex;
@@ -254,9 +298,12 @@
 
           <div class="posts-grid">
 
-            <a class="post-card" href="/aktuelles/keine-panik">
+            <a class="post-card" href="/aktuelles/keine-panik" data-lang="tr" hreflang="tr" lang="tr">
               <div class="post-thumb">
                 <img src="/assets/blog/keine-panik-cover.png" alt="Keine Panik" loading="lazy" width="1536" height="1024">
+                <div class="post-badges">
+                  <span class="post-lang-badge"><span class="dot" aria-hidden="true"></span>Türkçe</span>
+                </div>
               </div>
               <div class="post-info">
                 <p class="post-meta">
@@ -265,6 +312,24 @@
                 <h3 class="post-title">Keine Panik</h3>
                 <p class="post-excerpt">İstanbul’un o çok sesli kaosu ile Berlin’in “pazar günleri sessizlik kuralı” arasına sıkışmış bir sürgün hikayesi bu.</p>
                 <span class="post-cta">Devamını oku →</span>
+              </div>
+            </a>
+
+            <a class="post-card" href="/aktuelles/keine-panik-de" data-lang="de" hreflang="de" lang="de">
+              <div class="post-thumb">
+                <img src="/assets/blog/keine-panik-de-cover.png" alt="Keine Panik" loading="lazy" width="1536" height="1024">
+                <div class="post-badges">
+                  <span class="post-lang-badge"><span class="dot" aria-hidden="true"></span>Deutsch</span>
+                  <span class="post-translation-badge">Übersetzung</span>
+                </div>
+              </div>
+              <div class="post-info">
+                <p class="post-meta">
+                  <time datetime="2026-08-20">20. August 2026</time>
+                </p>
+                <h3 class="post-title">Keine Panik</h3>
+                <p class="post-excerpt">von Hayko Bagdat: Eine Exilgeschichte zwischen dem lauten, chaotischen Istanbul und der Sonntagsruhe in Berlin.</p>
+                <span class="post-cta">Weiterlesen →</span>
               </div>
             </a>
 
