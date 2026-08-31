@@ -1,5 +1,11 @@
 # Documentation
 
+## For whoever publishes the posts
+
+[publish-app-setup.md](publish-app-setup.md) — one-time setup of the publish app
+on a new computer: Python, GitHub access, cloning the site, starting the app.
+Send this to a new editor before anything else.
+
 ## For authors and translators
 
 Send whichever applies to the person writing the article:
