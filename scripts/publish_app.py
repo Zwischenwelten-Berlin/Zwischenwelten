@@ -689,7 +689,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         SESSION.update(mode="new", translate_of=None, edit_slug=None, cover_is_repo=False)
 
         self.send_json({"ok": True,
-                        "url": f"https://zwischenwelten-berlin.de/aktuelles/{r['slug']}",
+                        "url": f"https://zwischenwelten.berlin/aktuelles/{r['slug']}",
                         "commit": msg, "git_output": "\n\n".join(log)})
 
     def api_retry_push(self):
@@ -709,7 +709,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             "git_output": "\n\n".join(log)})
             return
         slug = SESSION["preview"]["slug"] if SESSION["preview"] else ""
-        self.send_json({"ok": True, "url": f"https://zwischenwelten-berlin.de/aktuelles/{slug}",
+        self.send_json({"ok": True, "url": f"https://zwischenwelten.berlin/aktuelles/{slug}",
                         "commit": "", "git_output": "\n\n".join(log)})
 
     def api_new_author(self, body):

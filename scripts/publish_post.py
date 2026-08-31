@@ -35,7 +35,7 @@ MANUSCRIPTS_DIR = os.path.join(IMG_DIR, "manuscripts")
 POSTS_JSON = os.path.join(IMG_DIR, "posts.json")
 AUTHOR_PAGES_DIR = os.path.join(ROOT, "journalistennetzwerk")
 NETWORK_PAGE = os.path.join(ROOT, "journalistennetzwerk.html")
-SITE = "https://zwischenwelten-berlin.de"
+SITE = "https://zwischenwelten.berlin"
 
 
 def load_posts():
