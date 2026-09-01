@@ -195,6 +195,52 @@ else
   say ""
 fi
 
+# 8) Git-Identität. `gh auth login` meldet bei GitHub an, setzt aber nicht den
+#    Namen, den git für jeden Commit verlangt. Fehlt er, schlägt nicht etwa der
+#    Start fehl, sondern der Commit *nachdem* der Beitrag schon geschrieben und
+#    vorgemerkt ist — also mitten im Vorgang. Deshalb hier, vorher, einmal.
+if git rev-parse --git-dir >/dev/null 2>&1 &&
+   { ! git config user.name >/dev/null 2>&1 || ! git config user.email >/dev/null 2>&1; }; then
+  GIT_NAME=""
+  GIT_MAIL=""
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    # Eine Abfrage, vier Felder. Ist die Adresse bei GitHub privat, liefert
+    # GitHub keine — dann die noreply-Adresse, die GitHub genau dafür vergibt.
+    # Getrennt wird mit dem Unit Separator, nicht mit Tab: bei einem
+    # Trennzeichen, das Leerraum ist, fasst read aufeinanderfolgende
+    # Trenner zu einem zusammen — leere Felder (Name und Adresse sind bei
+    # GitHub oft leer) verschwinden dann und alles rutscht eine Stelle vor.
+    IDENT=$(gh api user --jq '[.login, (.name // ""), (.email // ""), (.id|tostring)] | join("\u001f")' 2>/dev/null)
+    if [ -n "$IDENT" ]; then
+      IFS=$'\037' read -r GH_LOGIN GH_NAME GH_MAIL GH_ID <<< "$IDENT"
+      GIT_NAME=${GH_NAME:-$GH_LOGIN}
+      GIT_MAIL=${GH_MAIL:-"${GH_ID}+${GH_LOGIN}@users.noreply.github.com"}
+    fi
+  fi
+
+  if [ -n "$GIT_NAME" ]; then
+    say ""
+    say "git verlangt für jeden Beitrag einen Namen — er steht später in der"
+    say "Versionsgeschichte der Website. Aus dem GitHub-Konto ergibt sich:"
+    say "    $GIT_NAME <$GIT_MAIL>"
+    if ask "So eintragen (gilt nur für diesen Ordner)?"; then
+      git config user.name "$GIT_NAME"
+      git config user.email "$GIT_MAIL"
+      say "Eingetragen."
+    fi
+  fi
+
+  if ! git config user.name >/dev/null 2>&1 || ! git config user.email >/dev/null 2>&1; then
+    say ""
+    say "Achtung: Ohne Namen und Adresse kann git nichts committen — das"
+    say "Veröffentlichen bricht dann ab, nachdem der Beitrag geschrieben ist."
+    say "Im Terminal einmal setzen:"
+    say "    git config --global user.name \"Vorname Nachname\""
+    say "    git config --global user.email \"adresse@example.org\""
+    say ""
+  fi
+fi
+
 say ""
 say "Starte Publish-App …"
 exec "$PY" scripts/publish_app.py
