@@ -3,3 +3,5 @@
 .claude/settings.local.json
 __pycache__/
 *.pyc
+.playwright-mcp/
+.venv/
