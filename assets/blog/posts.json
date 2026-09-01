@@ -143,6 +143,18 @@
       "caption": null,
       "original_slug": null,
       "locked": false
+    },
+    "symbolwahl-wahlen-mit-wohnortprinzip": {
+      "title": "Symbolwahl: Wahlen mit Wohnortprinzip",
+      "lang": "de",
+      "date": "2026-09-01",
+      "author": "Andrei Schnell",
+      "tag": null,
+      "highlight": null,
+      "alt": null,
+      "caption": null,
+      "original_slug": null,
+      "locked": false
     }
   }
 }
