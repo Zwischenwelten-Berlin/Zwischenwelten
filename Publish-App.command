@@ -103,7 +103,33 @@ Wenn die Installation durchgelaufen ist, dieses Fenster schliessen
 und Publish-App.command erneut doppelklicken."
 fi
 
-# 4) Nach Updates suchen. Muss vor dem Paket-Schritt laufen, damit ein neu
+# 4) Ist das überhaupt eine echte Arbeitskopie? Wer die Website über den
+#    grossen grünen Knopf "Code → Download ZIP" lädt, bekommt die Dateien
+#    ohne .git — ohne jede Verbindung zu GitHub also. Die App startet damit
+#    ganz normal und sieht auch normal aus; erst das Veröffentlichen bricht
+#    ab, mit "fatal: not a git repository", nachdem der Beitrag längst
+#    geschrieben ist. Lieber hier anhalten, wo noch keine Arbeit drinsteckt.
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  say ""
+  say "Dieser Ordner ist keine Arbeitskopie der Website, sondern vermutlich"
+  say "eine ZIP-Kopie — sie hat keine Verbindung zu GitHub."
+  say "Ansehen liesse sich damit alles, veröffentlichen aber nichts."
+  TARGET="$(dirname "$PWD")/Zwischenwelten"
+  if [ -e "$TARGET" ]; then
+    say ""
+    say "Es gibt bereits einen Ordner $TARGET — bitte den benutzen:"
+    say "dort Publish-App.command doppelklicken."
+  elif ask "Die Website jetzt richtig herunterladen nach $TARGET?"; then
+    if git clone https://github.com/Zwischenwelten-Berlin/Zwischenwelten.git "$TARGET"; then
+      say ""
+      say "Fertig. Ab jetzt bitte immer den Ordner $TARGET benutzen und dort"
+      say "Publish-App.command doppelklicken. Diesen ZIP-Ordner kann man löschen."
+    fi
+  fi
+  fail "Von hier aus geht es nicht weiter."
+fi
+
+# 5) Nach Updates suchen. Muss vor dem Paket-Schritt laufen, damit ein neu
 #    hinzugekommenes Paket im selben Start mitinstalliert wird — und vor dem
 #    Start der App, damit sie gleich die neue Fassung ausführt.
 if git rev-parse --git-dir >/dev/null 2>&1; then
@@ -118,7 +144,7 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   fi
 fi
 
-# 5) Eigene Python-Umgebung anlegen — nur beim ersten Mal.
+# 6) Eigene Python-Umgebung anlegen — nur beim ersten Mal.
 #    Eigene Umgebung statt System-Python, weil neuere Python-Installationen
 #    ein 'pip install' ins System verweigern (externally-managed-environment).
 if [ ! -x "$PY" ]; then
@@ -130,7 +156,7 @@ if [ ! -x "$PY" ]; then
   fi
 fi
 
-# 6) Pakete installieren. Massgeblich ist scripts/requirements.txt — kommt dort
+# 7) Pakete installieren. Massgeblich ist scripts/requirements.txt — kommt dort
 #    per Update ein Paket dazu, installiert es sich beim nächsten Start von
 #    selbst. Der Fingerabdruck der Datei verhindert, dass bei jedem Start
 #    unnötig nachinstalliert wird.
@@ -155,7 +181,7 @@ fi
 # Falls die Umgebung nicht zustande kam: mit System-Python weiterarbeiten.
 [ -x "$PY" ] || PY="python3"
 
-# 7) GitHub-Zugang. Nicht zwingend — ohne gh fragt git beim Veröffentlichen
+# 8) GitHub-Zugang. Nicht zwingend — ohne gh fragt git beim Veröffentlichen
 #    selbst nach Zugangsdaten —, aber deutlich bequemer. Der Zugang wird hier
 #    geprüft und nicht erst beim Veröffentlichen: sonst fällt die Lücke erst
 #    auf, wenn der Beitrag fertig ist.
@@ -195,7 +221,7 @@ else
   say ""
 fi
 
-# 8) Git-Identität. `gh auth login` meldet bei GitHub an, setzt aber nicht den
+# 9) Git-Identität. `gh auth login` meldet bei GitHub an, setzt aber nicht den
 #    Namen, den git für jeden Commit verlangt. Fehlt er, schlägt nicht etwa der
 #    Start fehl, sondern der Commit *nachdem* der Beitrag schon geschrieben und
 #    vorgemerkt ist — also mitten im Vorgang. Deshalb hier, vorher, einmal.

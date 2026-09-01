@@ -71,6 +71,12 @@ git clone https://github.com/Zwischenwelten-Berlin/Zwischenwelten.git
 You now have a folder called `Zwischenwelten`. Keep it. Everything happens here,
 and this is the folder you open whenever you publish.
 
+**Not the green "Code → Download ZIP" button on GitHub.** A ZIP has the files
+but no connection to GitHub, and the app cannot publish from it — it would start
+and look completely normal, then fail at the very end of your first post. The
+app checks for this and stops instead, offering to download the site properly.
+Use the command above and there is nothing to think about.
+
 ## 4. Start it
 
 Open the `Zwischenwelten` folder in Finder and **double-click
