@@ -1,4 +1,4 @@
-# Sembolik seçim: İkametgâh esasına dayalı oy hakkı**
+# Sembolik seçim: İkametgâh esasına dayalı oy hakkı
 
 Wedding ve Gesundbrunnen’de yaşayan 182 bin kişinin 158 bini oy kullanabilecek yaşta. Ancak bunların yaklaşık 65 bini, vatandaşlıkları nedeniyle oy hakkından mahrum bırakılıyor.
 
