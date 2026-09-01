@@ -372,6 +372,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.api_md_to_html(body)
             elif self.path == "/api/html-to-md":
                 self.api_html_to_md(body)
+            elif self.path == "/api/delete-post":
+                self.api_delete_post(body)
             else:
                 self.send_error(404)
         except (ManuscriptError, PublishError) as e:
@@ -719,6 +721,53 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         "url": f"https://zwischenwelten.berlin/aktuelles/{r['slug']}",
                         "commit": msg, "git_output": "\n\n".join(log),
                         "app_updated": APP_UPDATE["pending"]})
+
+    def api_delete_post(self, body):
+        # Same pull-first ordering as api_publish: a failed pull must mean
+        # nothing was removed, so the refusals (locked, unknown, still has
+        # translations) are raised by delete_post *after* the pull succeeds
+        # but before anything is unlinked.
+        log = []
+        if not _pull(log):
+            git_output, warn = split_pull_warning("\n\n".join(log))
+            self.send_json({"ok": False, "stage": "pull",
+                            "error": "git pull --rebase ist fehlgeschlagen — "
+                                     "nichts wurde gelöscht." + warn,
+                            "git_output": git_output})
+            return
+
+        try:
+            r = publish_post.delete_post(body["slug"])
+        except PublishError as e:
+            self.send_json({"ok": False, "stage": "delete", "error": str(e),
+                            "git_output": "\n\n".join(log)})
+            return
+
+        msg = f"content: remove {r['title']}"
+        stage = _add_commit_push(r["files"], msg, log)
+        if stage == "add":
+            self.send_json({"ok": False, "stage": "add",
+                            "error": "git add ist fehlgeschlagen. Der Beitrag wurde lokal bereits "
+                                     "entfernt — bitte im Terminal prüfen.",
+                            "git_output": "\n\n".join(log), "files": r["files"]})
+            return
+        if stage == "commit":
+            self.send_json({"ok": False, "stage": "commit",
+                            "error": "git commit ist fehlgeschlagen. Der Beitrag ist lokal bereits "
+                                     "entfernt und mit git add vorgemerkt (im Index) — bitte im "
+                                     "Terminal beheben (z. B. Git-Identität oder ein Pre-Commit-Hook) "
+                                     "und dort manuell committen und pushen.",
+                            "git_output": "\n\n".join(log), "files": r["files"]})
+            return
+        if stage == "push":
+            self.send_json({"ok": False, "stage": "push",
+                            "error": "git push wurde abgelehnt. Lokal ist die Löschung committet — "
+                                     "»Erneut versuchen« führt pull --rebase + push aus.",
+                            "git_output": "\n\n".join(log)})
+            return
+
+        self.send_json({"ok": True, "title": r["title"], "commit": msg,
+                        "git_output": "\n\n".join(log)})
 
     def api_retry_push(self):
         log = []

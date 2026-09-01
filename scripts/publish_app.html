@@ -203,6 +203,8 @@
   .post-row.is-translation{ margin-left:56px; }
   .post-row .badge{ font-size:12px; border:1px solid currentColor;
                     border-radius:999px; padding:1px 8px; }
+  .post-row.is-confirming{ background:var(--red-bg); }
+  .post-row .confirm-text{ color:var(--red); font-size:13px; }
 
   /* ---------- card ---------- */
   .card{
@@ -225,6 +227,8 @@
   .banner-warning{ background:var(--yellow-bg); border:1px solid var(--yellow-line); color:var(--yellow); }
   .banner-success{ background:var(--green-bg); border:1px solid var(--green-line); color:var(--green); }
   .banner.compact{ margin:8px 0 0; }
+  /* a failed delete appends its git transcript here — keep the line breaks */
+  #list-error{ white-space:pre-wrap; }
 
   /* ---------- drop zones ---------- */
   .dropzones{
@@ -292,6 +296,9 @@
   .btn-primary:disabled{ background:#dcd7ca; color:var(--muted); cursor:not-allowed; }
   .btn-secondary{ background:transparent; color:var(--text); border:1px solid rgba(18,63,122,0.35); }
   .btn-secondary:hover{ border-color:var(--text); }
+  .btn-danger{ background:transparent; color:var(--red); border:1px solid var(--red-line); }
+  .btn-danger:hover:not(:disabled){ border-color:var(--red); }
+  .btn-danger:disabled{ color:var(--muted); border-color:var(--line-strong); cursor:not-allowed; }
   .link-muted{
     font-size:13px;
     color:var(--text-soft);
@@ -1546,7 +1553,13 @@ function escHtml(s) {
 
 const listFilters = { author: "", lang: "" };
 
+// Slug whose row currently shows its inline delete confirmation, or null.
+// Held here rather than in the row markup so only one can be open at a
+// time and any re-render closes it.
+let pendingDelete = null;
+
 async function loadList() {
+  pendingDelete = null;
   const errEl = document.getElementById("list-error");
   errEl.hidden = true;
   errEl.textContent = "";
@@ -1645,8 +1658,26 @@ function renderList() {
 
 function postRow(p, indent) {
   const row = document.createElement("div");
-  row.className = "post-row" + (indent ? " is-translation" : "");
+  const confirming = pendingDelete === p.slug;
+  row.className = "post-row" + (indent ? " is-translation" : "") +
+                  (confirming ? " is-confirming" : "");
   const locked = p.locked;
+
+  // The confirmation replaces the row rather than opening a window.confirm:
+  // a native dialog blocks the page, and the rest of the app never uses one.
+  if (confirming) {
+    row.innerHTML = `
+      <div class="grow">
+        <div class="title">${escHtml(p.title)}</div>
+        <div class="confirm-text">Wirklich löschen? Die Seite verschwindet von der
+          Website, sobald der Commit gepusht ist.</div>
+      </div>
+      <button class="btn btn-secondary" data-action="delete-cancel">Abbrechen</button>
+      <button class="btn btn-danger" data-action="delete-confirm"
+        data-slug="${escHtml(p.slug)}">Endgültig löschen</button>`;
+    return row;
+  }
+
   row.innerHTML = `
     ${p.cover ? `<img src="${escHtml(p.cover)}" alt="">` : ""}
     <div class="grow">
@@ -1657,8 +1688,46 @@ function postRow(p, indent) {
     ${locked ? "" : `<button class="btn btn-secondary" data-action="edit"
         data-slug="${escHtml(p.slug)}">Bearbeiten</button>`}
     ${p.original_slug ? "" : `<button class="btn btn-secondary" data-action="translate"
-        data-slug="${escHtml(p.slug)}">Übersetzung +</button>`}`;
+        data-slug="${escHtml(p.slug)}">Übersetzung +</button>`}
+    ${locked ? "" : `<button class="btn btn-danger" data-action="delete"
+        data-slug="${escHtml(p.slug)}">Löschen</button>`}`;
   return row;
+}
+
+// Deleting a post: pull, unlink every artifact, commit, push — the same
+// sequence publishing runs, so the removal reaches the live site the moment
+// the push lands. The server refuses a locked post, and an original whose
+// translations would be left pointing at nothing; both surface in the list's
+// error banner.
+async function doDelete(slug, btn) {
+  const errEl = document.getElementById("list-error");
+  errEl.hidden = true;
+  errEl.textContent = "";
+  btn.disabled = true;
+  btn.textContent = "Wird gelöscht …";
+
+  let r;
+  try {
+    r = await api("/api/delete-post", { slug });
+  } catch (e) {
+    r = { ok: false, error: "Netzwerkfehler: " + (e && e.message ? e.message : e) };
+  }
+
+  // Either way the list is now out of date — a refusal left the post in
+  // place (and may have revealed why, e.g. it was locked meanwhile), a
+  // success removed it — so reload from the server rather than patching the
+  // DOM. loadList clears the pending confirmation.
+  //
+  // The reload has to come *before* the banner is filled: loadList blanks
+  // #list-error as its first act, so painting the message first would leave
+  // the user with a post that silently refused to disappear.
+  await loadList();
+
+  if (!r.ok) {
+    errEl.textContent = r.error || "Der Beitrag konnte nicht gelöscht werden.";
+    if (r.git_output) errEl.textContent += "\n\n" + r.git_output;
+    errEl.hidden = false;
+  }
 }
 
 // ---- section »Autor:innen«: list + create + edit ---------------------------
@@ -1964,13 +2033,18 @@ document.getElementById("list-body").addEventListener("click", (e) => {
   const { action, slug } = btn.dataset;
   if (action === "edit") startEdit(slug);
   else if (action === "translate") startTranslate(slug);
+  else if (action === "delete") { pendingDelete = slug; renderList(); }
+  else if (action === "delete-cancel") { pendingDelete = null; renderList(); }
+  else if (action === "delete-confirm") doDelete(slug, btn);
 });
 document.getElementById("filter-author").addEventListener("change", (e) => {
   listFilters.author = e.target.value;
+  pendingDelete = null;
   renderList();
 });
 document.getElementById("filter-lang").addEventListener("change", (e) => {
   listFilters.lang = e.target.value;
+  pendingDelete = null;
   renderList();
 });
 

@@ -388,3 +388,124 @@ def test_link_network_member_appends_card_for_unknown_name():
 def test_link_network_member_without_grid_raises():
     with pytest.raises(publish_post.PublishError):
         publish_post.link_network_member("<html></html>", "X", "Rolle", "x")
+
+
+# --------------------------------------------------------------------------
+# delete_post
+# --------------------------------------------------------------------------
+def test_delete_post_removes_page_cover_manuscript_and_registry_entry(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.delete_post("ein-test")
+    assert not os.path.exists(repo / "aktuelles" / "ein-test.html")
+    assert not os.path.exists(repo / "assets" / "blog" / "ein-test-cover.png")
+    assert not os.path.exists(repo / "assets" / "blog" / "manuscripts" / "ein-test.md")
+    reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
+    assert "ein-test" not in reg["posts"]
+
+
+def test_delete_post_returns_title_and_removed_files(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    r = publish_post.delete_post("ein-test")
+    assert r["title"] == "Ein Test"
+    assert "aktuelles/ein-test.html" in r["files"]
+    assert "assets/blog/ein-test-cover.png" in r["files"]
+    assert "assets/blog/manuscripts/ein-test.md" in r["files"]
+    assert "assets/blog/posts.json" in r["files"]
+    assert "aktuelles/index.html" in r["files"]
+
+
+def test_delete_post_removes_card_from_index(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.delete_post("ein-test")
+    index = (repo / "aktuelles" / "index.html").read_text(encoding="utf-8")
+    assert "/aktuelles/ein-test" not in index
+
+
+def test_delete_post_leaves_other_posts_cards_intact(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.build_post(MD.replace("Ein Test", "Zweiter Test"), cover,
+                            lang="de", date="2026-08-04", write=True)
+    publish_post.delete_post("ein-test")
+    index = (repo / "aktuelles" / "index.html").read_text(encoding="utf-8")
+    assert "/aktuelles/ein-test" not in index
+    assert "/aktuelles/zweiter-test" in index
+    assert os.path.exists(repo / "aktuelles" / "zweiter-test.html")
+
+
+def test_delete_post_removes_card_from_author_page(repo, cover, author_page):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    assert "/aktuelles/ein-test" in author_page.read_text(encoding="utf-8")
+    r = publish_post.delete_post("ein-test")
+    page = author_page.read_text(encoding="utf-8")
+    assert "/aktuelles/ein-test" not in page
+    # the author's pre-existing card is untouched
+    assert "/aktuelles/alter-beitrag" in page
+    assert "journalistennetzwerk/suleyman-bag.html" in r["files"]
+
+
+def test_delete_post_refuses_unknown_slug(repo):
+    with pytest.raises(publish_post.PublishError):
+        publish_post.delete_post("gibt-es-nicht")
+
+
+def test_delete_post_refuses_locked_post(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
+    reg["posts"]["ein-test"]["locked"] = True
+    (repo / "assets" / "blog" / "posts.json").write_text(
+        json.dumps(reg, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(publish_post.PublishError):
+        publish_post.delete_post("ein-test")
+    assert os.path.exists(repo / "aktuelles" / "ein-test.html")
+
+
+def test_delete_post_refuses_original_that_still_has_translations(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.build_post(MD, cover, lang="tr", date="2026-08-03",
+                            slug="ein-test-tr", original_slug="ein-test", write=True)
+    with pytest.raises(publish_post.PublishError) as exc:
+        publish_post.delete_post("ein-test")
+    assert "ein-test-tr" in str(exc.value)
+    assert os.path.exists(repo / "aktuelles" / "ein-test.html")
+
+
+def test_delete_post_allows_translation_itself(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.build_post(MD, cover, lang="tr", date="2026-08-03",
+                            slug="ein-test-tr", original_slug="ein-test", write=True)
+    publish_post.delete_post("ein-test-tr")
+    reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
+    assert "ein-test-tr" not in reg["posts"]
+    assert "ein-test" in reg["posts"]
+
+
+def test_delete_post_removes_language_chip_when_it_was_the_last_of_its_language(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.build_post(MD, cover, lang="tr", date="2026-08-03",
+                            slug="ein-test-tr", original_slug="ein-test", write=True)
+    assert 'data-lang="tr"' in (repo / "aktuelles" / "index.html").read_text(encoding="utf-8")
+    publish_post.delete_post("ein-test-tr")
+    index = (repo / "aktuelles" / "index.html").read_text(encoding="utf-8")
+    assert 'data-lang="tr"' not in index
+    assert "'tr'" not in re.search(r"var langs = \[(.*?)\];", index).group(1)
+    # the language that still has a post keeps its chip
+    assert 'data-lang="de"' in index
+
+
+def test_delete_post_keeps_language_chip_while_another_post_uses_it(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.build_post(MD.replace("Ein Test", "Zweiter Test"), cover,
+                            lang="de", date="2026-08-04", write=True)
+    publish_post.delete_post("ein-test")
+    index = (repo / "aktuelles" / "index.html").read_text(encoding="utf-8")
+    assert 'data-lang="de"' in index
+    assert "'de'" in re.search(r"var langs = \[(.*?)\];", index).group(1)
+
+
+def test_delete_post_without_cover_on_disk_still_succeeds(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    os.remove(repo / "assets" / "blog" / "ein-test-cover.png")
+    r = publish_post.delete_post("ein-test")
+    assert "assets/blog/ein-test-cover.png" not in r["files"]
+    reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
+    assert "ein-test" not in reg["posts"]

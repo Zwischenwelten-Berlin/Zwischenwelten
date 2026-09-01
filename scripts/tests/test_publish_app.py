@@ -655,3 +655,80 @@ def test_publish_without_app_update_says_so(repo, cover, monkeypatch):
     status, payload = h.sent
     assert payload["ok"] is True
     assert payload["app_updated"] is False
+
+
+# ---- delete ---------------------------------------------------------------
+@pytest.fixture
+def git_ok(monkeypatch):
+    """Stub the git half of a delete, recording what it was asked to stage."""
+    calls = {}
+    monkeypatch.setattr(publish_app, "_pull", lambda log: True)
+    def fake_acp(files, msg, log):
+        calls["files"], calls["msg"] = files, msg
+        return ""
+    monkeypatch.setattr(publish_app, "_add_commit_push", fake_acp)
+    return calls
+
+
+def test_delete_post_removes_artifacts_and_commits(repo, cover, git_ok):
+    published(repo, cover)
+    h = FakeHandler()
+    h.api_delete_post({"slug": "ein-test"})
+    _, payload = h.sent
+    assert payload["ok"], payload
+    assert not (repo / "aktuelles" / "ein-test.html").exists()
+    reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
+    assert "ein-test" not in reg["posts"]
+    assert git_ok["msg"] == "content: remove Ein Test"
+    assert "aktuelles/ein-test.html" in git_ok["files"]
+
+
+def test_delete_post_refuses_locked_post_without_touching_git(repo, cover, git_ok):
+    published(repo, cover)
+    reg_path = repo / "assets" / "blog" / "posts.json"
+    reg = json.loads(reg_path.read_text())
+    reg["posts"]["ein-test"]["locked"] = True
+    reg_path.write_text(json.dumps(reg, ensure_ascii=False), encoding="utf-8")
+    h = FakeHandler()
+    h.api_delete_post({"slug": "ein-test"})
+    _, payload = h.sent
+    assert not payload["ok"]
+    assert (repo / "aktuelles" / "ein-test.html").exists()
+    assert "msg" not in git_ok
+
+
+def test_delete_post_refuses_original_with_translations(repo, cover, git_ok):
+    published(repo, cover)
+    publish_post.build_post(MD, cover, lang="tr", date="2026-08-04",
+                            slug="ein-test-tr", original_slug="ein-test", write=True)
+    h = FakeHandler()
+    h.api_delete_post({"slug": "ein-test"})
+    _, payload = h.sent
+    assert not payload["ok"]
+    assert "ein-test-tr" in payload["error"]
+    assert (repo / "aktuelles" / "ein-test.html").exists()
+    assert "msg" not in git_ok
+
+
+def test_delete_post_failed_pull_leaves_the_post_in_place(repo, cover, monkeypatch):
+    published(repo, cover)
+    monkeypatch.setattr(publish_app, "_pull", lambda log: False)
+    h = FakeHandler()
+    h.api_delete_post({"slug": "ein-test"})
+    _, payload = h.sent
+    assert not payload["ok"] and payload["stage"] == "pull"
+    assert (repo / "aktuelles" / "ein-test.html").exists()
+    reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
+    assert "ein-test" in reg["posts"]
+
+
+def test_delete_post_reports_push_failure_as_its_own_stage(repo, cover, monkeypatch):
+    published(repo, cover)
+    monkeypatch.setattr(publish_app, "_pull", lambda log: True)
+    monkeypatch.setattr(publish_app, "_add_commit_push", lambda files, msg, log: "push")
+    h = FakeHandler()
+    h.api_delete_post({"slug": "ein-test"})
+    _, payload = h.sent
+    assert not payload["ok"] and payload["stage"] == "push"
+    # the removal itself already happened locally
+    assert not (repo / "aktuelles" / "ein-test.html").exists()

@@ -716,6 +716,17 @@ def upsert_author_card(page_html, card, slug, original_slug=None):
     return page_html[:anchor.end()] + "\n" + card + page_html[anchor.end():]
 
 
+def remove_author_card(page_html, slug):
+    """Drop one post's card from an author page. A slug with no card there
+    (the post may predate the page) leaves the page unchanged."""
+    existing = re.search(
+        rf'[ \t]*<a class="post-card" href="/aktuelles/{re.escape(slug)}".*?</a>\n',
+        page_html, re.S)
+    if not existing:
+        return page_html
+    return page_html[:existing.start()] + page_html[existing.end():]
+
+
 def strip_tags(s):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", s)).strip()
 
@@ -763,6 +774,23 @@ def add_chip(index_html, lang):
     return index_html, True
 
 
+def remove_chip(index_html, lang):
+    """Take a language back out of the overview filter.
+
+    The mirror image of add_chip, for when the last post in a language is
+    deleted: without this the chip stays and filters to an empty grid.
+    """
+    chip = re.search(rf'^.*class="lang-chip" data-lang="{lang}".*$\n', index_html, re.M)
+    if chip:
+        index_html = index_html[:chip.start()] + index_html[chip.end():]
+    m = re.search(r"var langs = \[(.*?)\];", index_html)
+    if m:
+        kept = [c.strip() for c in m.group(1).split(",")
+                if c.strip() and c.strip().strip("'\"") != lang]
+        index_html = index_html.replace(m.group(0), f"var langs = [{', '.join(kept)}];")
+    return index_html
+
+
 def add_card(index_html, card):
     anchor = '<div class="posts-grid" id="posts-grid">\n'
     if anchor not in index_html:
@@ -777,6 +805,16 @@ def replace_card(index_html, card, slug):
     if not existing:
         return add_card(index_html, card)
     return index_html[:existing.start()] + card + index_html[existing.end():]
+
+
+def remove_card(index_html, slug):
+    """Drop one post's card from the overview grid; a missing card is a no-op."""
+    existing = re.search(
+        rf'[ \t]*<a class="post-card" href="/aktuelles/{re.escape(slug)}".*?</a>\n',
+        index_html, re.S)
+    if not existing:
+        return index_html
+    return index_html[:existing.start()] + index_html[existing.end():]
 
 
 # --------------------------------------------------------------------------
@@ -998,6 +1036,72 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         "cover_rel": cover_rel, "files": files,
         "chip_added": chip_added, "author_page": author_page_rel,
     }
+
+
+def delete_post(slug):
+    """Remove a published post and every artifact build_post left behind.
+
+    Unwinds the six places a post lives: its page, its cover, its manuscript,
+    its card in the overview, its card on the author page, and its registry
+    entry — plus the overview's language chip when the post was the last one
+    in that language.
+
+    Refuses an unknown slug, a locked post, and an original that still has
+    translations: those carry an original_slug pointing here, so deleting the
+    original first would strand them. Delete the translations first.
+
+    Returns {"title", "files"}; the files are repo-relative and include the
+    removed ones, which `git add --` stages as deletions.
+    """
+    registry = load_posts()
+    posts = registry["posts"]
+    if slug not in posts:
+        raise PublishError(f"'{slug}' ist nicht im Register.")
+    entry = posts[slug]
+    if entry.get("locked"):
+        raise PublishError(f"'{slug}' ist gesperrt und kann nur im Terminal gelöscht werden.")
+    translations = sorted(s for s, e in posts.items() if e.get("original_slug") == slug)
+    if translations:
+        raise PublishError(
+            f"'{slug}' hat noch Übersetzungen ({', '.join(translations)}). "
+            f"Bitte diese zuerst löschen.")
+
+    files = []
+
+    def drop(path):
+        if path and os.path.exists(path):
+            os.remove(path)
+            files.append(os.path.relpath(path, ROOT))
+
+    drop(os.path.join(POSTS_DIR, slug + ".html"))
+    for cover in sorted(glob.glob(os.path.join(IMG_DIR, f"{slug}-cover.*"))):
+        drop(cover)
+    drop(os.path.join(MANUSCRIPTS_DIR, slug + ".md"))
+
+    index_html = remove_card(open(INDEX, encoding="utf-8").read(), slug)
+    lang = entry.get("lang")
+    if lang and not any(e.get("lang") == lang for s, e in posts.items() if s != slug):
+        index_html = remove_chip(index_html, lang)
+    with open(INDEX, "w", encoding="utf-8") as fh:
+        fh.write(index_html)
+    files.append(os.path.relpath(INDEX, ROOT))
+
+    # The author page is found the same way the post list finds it: fuzzy-match
+    # the stored byline back to a registry entry, so a translation's localized
+    # spelling still lands on the right person's page.
+    matched, _ = match_author(entry.get("author") or "", load_authors())
+    apath = author_page_path(matched["id"]) if matched else None
+    if apath and os.path.exists(apath):
+        page_html = open(apath, encoding="utf-8").read()
+        with open(apath, "w", encoding="utf-8") as fh:
+            fh.write(remove_author_card(page_html, slug))
+        files.append(os.path.relpath(apath, ROOT))
+
+    del posts[slug]
+    save_posts(registry)
+    files.append(os.path.relpath(POSTS_JSON, ROOT))
+
+    return {"title": entry.get("title") or slug, "files": files}
 
 
 def main():
