@@ -37,3 +37,5 @@ Almanya’daki seçimlerin tarihi, aynı zamanda oy hakkının genişletilmesini
 “Bir erkek, bir oy” ilkesi ancak zaman içinde kabul gördü. Kadınlara seçme hakkı 1918’de tanındı. Son yıllarda ise 16 yaşından itibaren gençlerin seçimlere katılabilmesine yönelik düzenlemeler hayata geçirildi. Berlin’de 16 ve 17 yaşındaki gençler bu yıl ilk kez Eyalet Meclisi seçimlerinde oy kullanabilecek. İlçe meclisi seçimlerinde ise bu hak 2005’ten beri mevcut. Almanya’daki Avrupa Parlamentosu seçimlerinde seçmen yaşı 2024’ten bu yana 16.
 
 Seçimlerde ikametgâh ilkesinin vatandaşlık ilkesinin yerini ne zaman ve nasıl alacağını gelecek gösterecek. Ancak vergi ödeyen insanlardan oy hakkını esirgemek için makul gerekçeler bulmak gelecekte her hâlükârda daha da zorlaşacak. En azından oy hakkının tarihsel gelişimine bakıldığında ortaya çıkan sonuç bu.
+
+**Bu haber Almancadan Türkçeye çevrilmiştir. Haberin orijinalini bu bağlantı üzerinden okuyabilirsiniz:** https://brunnenmagazin.de/symbolwahl-berlin-2026/
