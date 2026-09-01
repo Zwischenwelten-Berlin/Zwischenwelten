@@ -581,3 +581,77 @@ def test_pull_skipped_when_branch_has_no_upstream(monkeypatch):
     assert publish_app._pull(log) is True
     assert not any(a[0] == "pull" for a in calls)
     assert "keinen Upstream" in "\n".join(log)
+
+
+# ---- app self-update notice ------------------------------------------------
+
+def _git_repo(tmp_path, monkeypatch):
+    """A real one-commit git repo, with publish_app pointed at it."""
+    import subprocess
+    def git(*args):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True,
+                       capture_output=True, text=True)
+    git("init", "-q")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "user.name", "Test")
+    (tmp_path / "aktuelles").mkdir(exist_ok=True)
+    (tmp_path / "aktuelles" / "post.html").write_text("x", encoding="utf-8")
+    (tmp_path / "scripts").mkdir(exist_ok=True)
+    (tmp_path / "scripts" / "publish_app.py").write_text("x", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    monkeypatch.setattr(publish_app, "ROOT", str(tmp_path))
+    return tmp_path, git
+
+
+def test_app_code_changed_ignores_content_only_commits(tmp_path, monkeypatch):
+    repo_dir, git = _git_repo(tmp_path, monkeypatch)
+    before = publish_app.run_git("rev-parse", "HEAD")[1]
+    (repo_dir / "aktuelles" / "post.html").write_text("neuer Beitrag", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "content: another editor's post")
+    after = publish_app.run_git("rev-parse", "HEAD")[1]
+    assert publish_app._app_code_changed(before, after) is False
+
+
+def test_app_code_changed_detects_app_files(tmp_path, monkeypatch):
+    repo_dir, git = _git_repo(tmp_path, monkeypatch)
+    before = publish_app.run_git("rev-parse", "HEAD")[1]
+    (repo_dir / "scripts" / "publish_app.py").write_text("neue Fassung", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "app: improve something")
+    after = publish_app.run_git("rev-parse", "HEAD")[1]
+    assert publish_app._app_code_changed(before, after) is True
+
+
+def test_app_code_changed_is_false_without_movement(tmp_path, monkeypatch):
+    _git_repo(tmp_path, monkeypatch)
+    head = publish_app.run_git("rev-parse", "HEAD")[1]
+    assert publish_app._app_code_changed(head, head) is False
+    assert publish_app._app_code_changed("", head) is False
+
+
+def test_publish_reports_pending_app_update(repo, cover, monkeypatch):
+    monkeypatch.setitem(publish_app.APP_UPDATE, "pending", True)
+    monkeypatch.setattr(publish_app, "_pull", lambda log: True)
+    monkeypatch.setattr(publish_app, "_add_commit_push", lambda files, msg, log: "")
+    publish_app.SESSION["publish_args"] = dict(md_text=MD, image_path=cover, lang="de",
+                                               date="2026-08-03")
+    h = FakeHandler()
+    h.api_publish()
+    status, payload = h.sent
+    assert payload["ok"] is True
+    assert payload["app_updated"] is True
+
+
+def test_publish_without_app_update_says_so(repo, cover, monkeypatch):
+    monkeypatch.setitem(publish_app.APP_UPDATE, "pending", False)
+    monkeypatch.setattr(publish_app, "_pull", lambda log: True)
+    monkeypatch.setattr(publish_app, "_add_commit_push", lambda files, msg, log: "")
+    publish_app.SESSION["publish_args"] = dict(md_text=MD, image_path=cover, lang="de",
+                                               date="2026-08-03")
+    h = FakeHandler()
+    h.api_publish()
+    status, payload = h.sent
+    assert payload["ok"] is True
+    assert payload["app_updated"] is False

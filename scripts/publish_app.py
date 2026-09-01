@@ -112,6 +112,29 @@ def current_branch():
     return out
 
 
+# Paths whose content *is* the running app. A pull that touches them has
+# swapped code out from under a process that already loaded it: the browser
+# re-reads publish_app.html from disk on every GET (see do_GET), while this
+# Python is only ever read once at startup, so the UI can end up talking to
+# an older API. Content paths (aktuelles/, assets/) are deliberately not
+# listed — the other editor's posts arrive through every pull and must not
+# raise a restart notice.
+APP_PATHS = ("scripts/", "Publish-App.command")
+
+# Sticky once set: the running process stays stale until it is restarted.
+APP_UPDATE = {"pending": False}
+
+
+def _app_code_changed(before, after):
+    """Whether the commits between `before` and `after` touch APP_PATHS."""
+    if not before or not after or before == after:
+        return False
+    code, out = run_git("diff", "--name-only", f"{before}..{after}")
+    if code != 0:
+        return False
+    return any(line.startswith(APP_PATHS) for line in out.splitlines())
+
+
 def _rebase_in_progress():
     """Whether a `git rebase` is actually mid-flight (rebase-merge/-apply
     state dirs exist under .git). Most `git pull --rebase` failures (dirty
@@ -154,6 +177,7 @@ def _pull(log):
         log.append("$ git pull --rebase --autostash\n(übersprungen: Branch hat "
                    "keinen Upstream — nichts zu pullen)")
         return True
+    _, before = run_git("rev-parse", "HEAD")
     code, out = run_git("pull", "--rebase", "--autostash")
     log.append(f"$ git pull --rebase --autostash\n{out}")
     if code != 0:
@@ -161,6 +185,9 @@ def _pull(log):
         if warn:
             log.append(f"{_PULL_WARN_MARK}{warn}")
         return False
+    _, after = run_git("rev-parse", "HEAD")
+    if _app_code_changed(before, after):
+        APP_UPDATE["pending"] = True
     return True
 
 
@@ -690,12 +717,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         self.send_json({"ok": True,
                         "url": f"https://zwischenwelten.berlin/aktuelles/{r['slug']}",
-                        "commit": msg, "git_output": "\n\n".join(log)})
+                        "commit": msg, "git_output": "\n\n".join(log),
+                        "app_updated": APP_UPDATE["pending"]})
 
     def api_retry_push(self):
         log = []
+        _, before = run_git("rev-parse", "HEAD")
         code, out = run_git("pull", "--rebase")
         log.append(f"$ git pull --rebase\n{out}")
+        if code == 0:
+            _, after = run_git("rev-parse", "HEAD")
+            if _app_code_changed(before, after):
+                APP_UPDATE["pending"] = True
         if code != 0:
             error = "git pull --rebase ist fehlgeschlagen."
             error += _abort_stuck_rebase(log)
@@ -710,7 +743,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         slug = SESSION["preview"]["slug"] if SESSION["preview"] else ""
         self.send_json({"ok": True, "url": f"https://zwischenwelten.berlin/aktuelles/{slug}",
-                        "commit": "", "git_output": "\n\n".join(log)})
+                        "commit": "", "git_output": "\n\n".join(log),
+                        "app_updated": APP_UPDATE["pending"]})
 
     def api_new_author(self, body):
         # Caught locally (not left to do_POST's handler) so this behaves

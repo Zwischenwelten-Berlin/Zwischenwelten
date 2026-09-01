@@ -783,6 +783,13 @@
         <h2>Veröffentlicht!</h2>
         <p><a id="result-link" href="#" target="_blank" rel="noopener"></a></p>
         <p class="text-soft">GitHub Pages braucht 1–2 Minuten, bis die Seite live ist.</p>
+        <div id="result-app-updated" class="banner banner-warning" hidden>
+          <strong>Die Publish-App wurde inzwischen aktualisiert.</strong>
+          Der Beitrag ist veröffentlicht — hier ist nichts offen. Vor der nächsten
+          Arbeit bitte dieses Terminal-Fenster schliessen und
+          <code>Publish-App.command</code> erneut doppelklicken, damit die neue
+          Fassung läuft.
+        </div>
         <details><summary>Git-Ausgabe</summary><pre id="result-git-output-ok"></pre></details>
         <div class="actions" style="justify-content:flex-start; margin-top:20px;">
           <a href="#" id="btn-new-post" class="link-muted">Weiteren Beitrag veröffentlichen</a>
@@ -1519,6 +1526,7 @@ function renderResult(r) {
     link.href = r.url;
     link.textContent = r.url;
     document.getElementById("result-git-output-ok").textContent = r.git_output || "";
+    document.getElementById("result-app-updated").hidden = !r.app_updated;
   } else {
     document.getElementById("result-error").textContent = r.error || "Unbekannter Fehler.";
     document.getElementById("result-git-output-fail").textContent = r.git_output || "";
