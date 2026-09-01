@@ -40,6 +40,11 @@ and if it is missing, the command in step 3 will offer to install it.
 This is what lets your computer prove to GitHub that the posts are coming from
 you. Install [GitHub CLI](https://cli.github.com/), then run:
 
+(Or skip it: if it is missing when you first start the app, the app offers to
+download and install it for you, which is the easier route — GitHub does not
+sign this package, so a copy fetched through a browser gets refused by macOS on
+double-click, while the one the app fetches does not.)
+
 ```
 gh auth login
 ```

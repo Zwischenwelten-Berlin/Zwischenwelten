@@ -50,6 +50,36 @@ open_page() {
   fi
 }
 
+# Holt das offizielle Installationspaket von GitHub und übergibt es dem
+# Installationsprogramm von macOS. GitHub baut ein "universal"-Paket, also
+# muss hier nichts über Prozessortypen entschieden werden.
+#
+# Der Umweg über curl ist kein Selbstzweck: GitHub signiert dieses Paket
+# nicht ("spctl: rejected, source=no usable signature"). Aus dem Browser
+# geladen bekommt es das Merkmal com.apple.quarantine, und macOS verweigert
+# beim Doppelklick die Installation — genau die Sackgasse, in der ein
+# Redakteur ohne Hilfe steckenbleibt. Von curl geladene Dateien tragen
+# dieses Merkmal nicht, deshalb öffnet sich hier das normale
+# Installationsfenster. Ein Link auf die Download-Seite wäre also nicht der
+# einfachere Weg, sondern der, der scheitert.
+install_gh_pkg() {
+  local url tmp
+  say "Suche das aktuelle Installationspaket …"
+  url=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest 2>/dev/null |
+        grep -o 'https://[^"]*macOS_universal\.pkg' | head -1)
+  [ -n "$url" ] || return 1
+  tmp="${TMPDIR:-/tmp}/gh-installer.pkg"
+  say "Lade $(basename "$url") …"
+  curl -fL --progress-bar -o "$tmp" "$url" || return 1
+  command -v open >/dev/null 2>&1 || return 1
+  say ""
+  say "Es öffnet sich jetzt das Installationsfenster von macOS. Dort"
+  say "durchklicken — das abgefragte Passwort ist das dieses Macs, nicht"
+  say "das von GitHub."
+  open "$tmp"
+  return 0
+}
+
 have_brew()   { command -v brew >/dev/null 2>&1; }
 # Nicht nur »liegt eine Datei namens python3 im Pfad« — auf macOS gibt es
 # /usr/bin/python3 auch ohne Xcode-Werkzeuge, und der Aufruf schlägt dann fehl.
@@ -193,11 +223,18 @@ if ! command -v gh >/dev/null 2>&1; then
     if ask "Jetzt mit Homebrew installieren?"; then
       brew install gh
     fi
-  else
-    if ask "Die Download-Seite von GitHub CLI jetzt öffnen?"; then
+  elif ask "Jetzt herunterladen und installieren?"; then
+    if install_gh_pkg; then
+      say ""
+      say "Wenn die Installation durchgelaufen ist: dieses Fenster schliessen"
+      say "und Publish-App.command erneut doppelklicken. Erst dann kennt das"
+      say "Terminal den neuen Befehl — und fragt dann nach der Anmeldung."
+    else
+      say ""
+      say "Der Download hat nicht geklappt."
       open_page "https://cli.github.com/"
-      say "Nach der Installation dieses Fenster schliessen und"
-      say "Publish-App.command erneut doppelklicken."
+      say "Dort das Paket für macOS laden, installieren, danach dieses Fenster"
+      say "schliessen und Publish-App.command erneut doppelklicken."
     fi
   fi
 fi
