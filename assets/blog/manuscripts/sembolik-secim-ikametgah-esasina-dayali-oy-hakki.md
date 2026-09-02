@@ -38,4 +38,4 @@ Almanya’daki seçimlerin tarihi, aynı zamanda oy hakkının genişletilmesini
 
 Seçimlerde ikametgâh ilkesinin vatandaşlık ilkesinin yerini ne zaman ve nasıl alacağını gelecek gösterecek. Ancak vergi ödeyen insanlardan oy hakkını esirgemek için makul gerekçeler bulmak gelecekte her hâlükârda daha da zorlaşacak. En azından oy hakkının tarihsel gelişimine bakıldığında ortaya çıkan sonuç bu.
 
-**Bu haber Almancadan Türkçeye çevrilmiştir. Haberin orijinalini bu bağlantı üzerinden okuyabilirsiniz:** https://brunnenmagazin.de/symbolwahl-berlin-2026/
+**Bu haber Almancadan Türkçeye çevrilmiştir. Haberin orijinalini bu bağlantı üzerinden okuyabilirsiniz:** [https://brunnenmagazin.de/symbolwahl-berlin-2026/](https://brunnenmagazin.de/symbolwahl-berlin-2026/)
