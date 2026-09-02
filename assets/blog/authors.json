@@ -82,6 +82,13 @@
         "Die Redaktion",
         "Zwischenwelten Redaktion"
       ]
+    },
+    {
+      "id": "arif-aslan",
+      "canonical": "Arif Aslan",
+      "role": "Gazeteci",
+      "names": {},
+      "aliases": []
     }
   ]
 }
