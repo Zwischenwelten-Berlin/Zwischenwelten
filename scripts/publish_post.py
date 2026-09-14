@@ -533,7 +533,7 @@ PAGE = """<!DOCTYPE html>
 {body}
 
                 <div class="article-back">
-                  <p class="article-author">{by}: <strong>{author}</strong> · {published_line}</p>
+                  <p class="article-author">{by}: <strong>{byline}</strong> · {published_line}</p>
                   <a href="/aktuelles" class="back-link">← {back}</a>
                 </div>
               </div>
@@ -650,6 +650,51 @@ def render_author_page(name, role, bio_paragraphs, photo_rel):
 
 def author_page_path(author_id):
     return os.path.join(AUTHOR_PAGES_DIR, f"{author_id}.html")
+
+
+def author_page_href(author_id):
+    """Site URL of the author's page, or None while they have none."""
+    if author_id and os.path.exists(author_page_path(author_id)):
+        return f"/journalistennetzwerk/{author_id}"
+    return None
+
+
+BYLINE_NAME = re.compile(r'<p class="article-author">[^<]*<strong>(.*?)</strong>', re.S)
+
+
+def link_byline(page_html, href):
+    """Link the name in a post's closing byline ("Autor: <strong>Name</strong>")
+    to the author page. Returns (html, changed); a byline that already links,
+    or a page without one, stays untouched."""
+    m = BYLINE_NAME.search(page_html)
+    if not m or m.group(1).startswith("<a "):
+        return page_html, False
+    linked = f'<a href="{href}">{m.group(1)}</a>'
+    return page_html[:m.start(1)] + linked + page_html[m.end(1):], True
+
+
+def link_author_bylines(author_id):
+    """Link the byline of every published post by this author to their page,
+    so posts that predate the page catch up. Posts are attributed through
+    posts.json and the fuzzy matcher, like the Beiträge list. Returns the
+    repo-relative paths it changed."""
+    href = author_page_href(author_id)
+    if not href:
+        return []
+    registry = load_authors()
+    changed = []
+    for slug, entry in load_posts()["posts"].items():
+        matched, _ = match_author(entry.get("author") or "", registry)
+        path = os.path.join(POSTS_DIR, slug + ".html")
+        if not matched or matched["id"] != author_id or not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as fh:
+            html, did = link_byline(fh.read(), href)
+        if did:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(html)
+            changed.append(os.path.relpath(path, ROOT))
+    return changed
 
 
 def link_network_member(page_html, name, role, author_id):
@@ -920,6 +965,10 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
     description = strip_tags(teaser(subtitle, body, 155))
     published_line = (f"{cfg['published']} {date_label}" if lang != "tr"
                       else f"{date_label} {cfg['published']}")
+    # The closing byline links to the author's page once they have one.
+    author_href = author_page_href(author_id)
+    byline = (f'<a href="{author_href}">{esc(author_display)}</a>' if author_href
+              else esc(author_display))
 
     page = PAGE.format(
         lang=lang, locale=cfg["locale"], site=SITE,
@@ -932,7 +981,7 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         lang_label=cfg["label"], cover=cover_rel, dims=dims,
         alt=esc(alt or title).replace('"', "&quot;"),
         caption_html=f'\n              <figcaption>{esc(caption)}</figcaption>' if caption else "",
-        body=body, by=cfg["by"], published_line=published_line, back=cfg["back"],
+        body=body, by=cfg["by"], byline=byline, published_line=published_line, back=cfg["back"],
         dir_attr=' dir="rtl"' if cfg["rtl"] else "",
     )
 

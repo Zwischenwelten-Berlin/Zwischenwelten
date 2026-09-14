@@ -68,6 +68,11 @@ of a post do not get their own card; only the original does. Your job is to veri
 to edit by hand: open the author page and confirm the new post appears at the top of the
 Beiträge grid.
 
+The author name in the post's closing byline (`Autor: <strong>…</strong>`) links to
+`/journalistennetzwerk/<author-id>` whenever that page exists at build time. When the app
+creates or regenerates an author page, `link_author_bylines` links the bylines of that
+author's already published posts too (same attribution as the Beiträge list).
+
 If the author has no page yet, nothing happens (pages are created per author on request;
 `journalistennetzwerk/suleyman-bag.html` is the template to copy — photo goes to
 `assets/autoren/<author-id>.png`).

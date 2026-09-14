@@ -732,3 +732,23 @@ def test_delete_post_reports_push_failure_as_its_own_stage(repo, cover, monkeypa
     assert not payload["ok"] and payload["stage"] == "push"
     # the removal itself already happened locally
     assert not (repo / "aktuelles" / "ein-test.html").exists()
+
+
+def test_update_author_with_page_links_existing_post_bylines(repo, cover, monkeypatch):
+    calls = {}
+    def fake_git_flow(files, msg):
+        calls["files"] = files
+        return True, "", "ok"
+    monkeypatch.setattr(publish_app, "git_flow", fake_git_flow)
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03",
+                            author="Dominique Hensel", write=True)
+    (repo / "assets" / "autoren").mkdir(parents=True)
+    h = FakeHandler()
+    h.api_update_author({"id": "dominique-hensel", "role": "Chefredakteurin",
+                         "page": {"bio": "Absatz eins.",
+                                  "photo_b64": COVER_PNG_B64, "photo_ext": ".png"}})
+    _, payload = h.sent
+    assert payload["ok"], payload
+    html = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
+    assert '<a href="/journalistennetzwerk/dominique-hensel">Dominique Hensel</a>' in html
+    assert os.path.join("aktuelles", "ein-test.html") in calls["files"]

@@ -133,3 +133,8 @@ def test_fragment_to_md_headings_and_bold():
     assert "## Kapitel" in md
     assert "**fett**" in md
     assert "- a" in md
+
+
+def test_linked_byline_still_yields_plain_author_name():
+    page, _ = publish_post.link_byline(build_page()["page_html"], "/journalistennetzwerk/x")
+    assert html_to_md.page_to_md(page)["author"] == "Süleyman Bağ"

@@ -861,6 +861,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 files += [os.path.relpath(apath, publish_post.ROOT),
                          os.path.relpath(photo_path, publish_post.ROOT)]
                 files += _write_network_page(net_update)
+                # Posts published before the page existed link to it now.
+                files += publish_post.link_author_bylines(author_id)
 
             ok, stage, log = git_flow(files, f"content: Autor:in {name} registriert")
             self.send_json({"ok": True, "id": author_id, "canonical": name,
@@ -971,6 +973,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     fh.write(html)
                 files.append(os.path.relpath(apath, publish_post.ROOT))
                 files += _write_network_page(net_update)
+                # Posts published before the page existed link to it now.
+                files += publish_post.link_author_bylines(author_id)
 
             ok, stage, log = git_flow(
                 files, f"content: Autor:in {entry['canonical']} aktualisiert")

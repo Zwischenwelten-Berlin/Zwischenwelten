@@ -509,3 +509,33 @@ def test_delete_post_without_cover_on_disk_still_succeeds(repo, cover):
     assert "assets/blog/ein-test-cover.png" not in r["files"]
     reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
     assert "ein-test" not in reg["posts"]
+
+
+def test_byline_links_to_existing_author_page(repo, cover, author_page):
+    r = publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=False)
+    assert ('<p class="article-author">Autor: <strong>'
+            '<a href="/journalistennetzwerk/suleyman-bag">Süleyman Bağ</a></strong>'
+            ) in r["page_html"]
+
+
+def test_byline_without_author_page_stays_plain(repo, cover):
+    r = publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=False)
+    assert '<p class="article-author">Autor: <strong>Süleyman Bağ</strong>' in r["page_html"]
+
+
+def test_link_author_bylines_links_posts_that_predate_the_page(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    (repo / "journalistennetzwerk" / "suleyman-bag.html").write_text("<html>", encoding="utf-8")
+    assert publish_post.link_author_bylines("suleyman-bag") == [
+        os.path.join("aktuelles", "ein-test.html")]
+    html = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
+    assert '<strong><a href="/journalistennetzwerk/suleyman-bag">Süleyman Bağ</a></strong>' in html
+    # a second run finds nothing left to link
+    assert publish_post.link_author_bylines("suleyman-bag") == []
+
+
+def test_link_author_bylines_leaves_other_authors_posts_alone(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    (repo / "journalistennetzwerk" / "dominique-hensel.html").write_text("<html>", encoding="utf-8")
+    assert publish_post.link_author_bylines("dominique-hensel") == []
+    assert publish_post.link_author_bylines("andrei-schnell") == []  # no page at all
