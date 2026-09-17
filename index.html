@@ -2156,13 +2156,13 @@ deren Perspektiven bisher kaum vorkommen.</p>
               <p class="section-eyebrow">Aktuelles</p>
               <h2 class="news-title" id="news-title">Neues aus den <em>Zwischenwelten</em></h2>
             </div>
-            <a href="/aktuelles" class="news-more" id="news-more">Alle Beiträge →</a>
+            <a href="/aktuelles?lang=de" class="news-more" id="news-more">Alle Beiträge →</a>
           </div>
 
           <div class="lang-filter" role="group" aria-label="Beiträge nach Sprache filtern">
             <span class="lang-filter-label">Sprache</span>
-            <button type="button" class="lang-chip" data-lang="all" aria-pressed="true">Alle</button>
-            <button type="button" class="lang-chip" data-lang="de" aria-pressed="false">Deutsch</button>
+            <button type="button" class="lang-chip" data-lang="all" aria-pressed="false">Alle</button>
+            <button type="button" class="lang-chip" data-lang="de" aria-pressed="true">Deutsch</button>
             <button type="button" class="lang-chip" data-lang="en" aria-pressed="false">English</button>
             <button type="button" class="lang-chip" data-lang="tr" aria-pressed="false">Türkçe</button>
             <button type="button" class="lang-chip" data-lang="ru" aria-pressed="false">Русский</button>
@@ -2426,7 +2426,7 @@ Verständigung über Glaubensgrenzen hinweg nicht nur möglich, sondern notwendi
       var chips = section.querySelectorAll('.lang-chip');
       var LIMIT = 3;
       var cards = [];
-      var current = 'all';
+      var current = 'de';
 
       function render(){
         var shown = [];
