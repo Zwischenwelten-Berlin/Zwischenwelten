@@ -1795,6 +1795,238 @@
         font-size:38px;
       }
     }
+
+    /* AKTUELLES (Startseite) */
+    .news{
+      padding:14px 0 44px;
+    }
+    .news-head{
+      display:flex;
+      align-items:end;
+      justify-content:space-between;
+      gap:24px;
+      flex-wrap:wrap;
+      margin-bottom:4px;
+    }
+    .news-title{
+      margin:0;
+      font-size:clamp(28px, 3.4vw, 40px);
+      line-height:1.05;
+      letter-spacing:-0.04em;
+      font-weight:700;
+    }
+    .news-title em{
+      font-style:normal;
+      background:var(--accent);
+      padding:0 .15em;
+      border-radius:.1em;
+      box-decoration-break:clone;
+      -webkit-box-decoration-break:clone;
+    }
+    .news-more{
+      display:inline-flex;
+      align-items:center;
+      align-self:end;
+      font-size:14px;
+      font-weight:600;
+      color:var(--text);
+      padding-bottom:3px;
+      border-bottom:1px solid var(--text);
+      white-space:nowrap;
+      transition:transform .2s ease;
+    }
+    .news-more:hover{ transform:translateX(3px); }
+
+    .lang-filter{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:10px;
+      margin:22px 0 0;
+      padding:0;
+      list-style:none;
+    }
+    .lang-filter-label{
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:0.1em;
+      text-transform:uppercase;
+      color:var(--text-soft);
+      margin-right:6px;
+    }
+    .lang-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-family:inherit;
+      font-size:14px;
+      font-weight:600;
+      line-height:1;
+      color:var(--text);
+      background:var(--white);
+      border:1px solid var(--line-strong);
+      padding:10px 18px;
+      border-radius:999px;
+      cursor:pointer;
+      transition:background .2s ease, border-color .2s ease, transform .2s ease;
+    }
+    .lang-chip:hover{
+      border-color:rgba(18,63,122,0.35);
+      transform:translateY(-1px);
+    }
+    .lang-chip[aria-pressed="true"]{
+      background:var(--text);
+      border-color:var(--text);
+      color:#f4f1e9;
+    }
+
+    .news-grid{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:20px;
+      margin-top:26px;
+      min-height:380px;
+    }
+    .news-grid[hidden]{ display:none; }
+
+    .post-card{
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      background:var(--white);
+      border:1px solid var(--line-strong);
+      border-radius:18px;
+      overflow:hidden;
+      color:var(--text);
+      transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+      isolation:isolate;
+    }
+    .post-card:hover,
+    .post-card:focus-visible{
+      transform:translateY(-3px);
+      box-shadow:0 22px 44px rgba(18,63,122,0.12);
+      border-color:rgba(18,63,122,0.22);
+      outline:none;
+    }
+    .post-thumb{
+      position:relative;
+      aspect-ratio:16 / 10;
+      overflow:hidden;
+      background:#faf5ec;
+      border-bottom:1px solid var(--line);
+    }
+    .post-thumb img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      transition:transform .5s ease;
+    }
+    .post-card:hover .post-thumb img{ transform:scale(1.04); }
+    .post-lang-badge{
+      position:absolute;
+      top:12px;
+      right:12px;
+      z-index:2;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-size:10.5px;
+      font-weight:600;
+      letter-spacing:0.12em;
+      text-transform:uppercase;
+      color:#fff;
+      background:rgba(18,63,122,0.6);
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
+      padding:5px 9px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.18);
+    }
+    .post-lang-badge .dot{
+      width:5px; height:5px;
+      border-radius:50%;
+      background:var(--accent);
+    }
+    .post-info{
+      padding:16px 18px 18px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      flex:1;
+    }
+    .post-meta{
+      margin:0;
+      font-size:10.5px;
+      letter-spacing:0.14em;
+      text-transform:uppercase;
+      font-weight:600;
+      color:var(--text-soft);
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .post-meta .sep{ color:var(--accent); }
+    .post-title{
+      margin:0;
+      font-size:17px;
+      line-height:1.28;
+      letter-spacing:-0.02em;
+      font-weight:700;
+      color:var(--text);
+    }
+    .post-excerpt{
+      margin:0;
+      font-size:13px;
+      line-height:1.55;
+      color:#4f5964;
+      display:-webkit-box;
+      -webkit-line-clamp:3;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+    .post-cta{
+      margin-top:auto;
+      align-self:flex-start;
+      font-size:12.5px;
+      font-weight:600;
+      color:var(--text);
+      padding-top:6px;
+      padding-bottom:2px;
+      border-bottom:1px solid var(--text);
+      transition:transform .2s ease;
+    }
+    .post-card:hover .post-cta{ transform:translateX(3px); }
+
+    .news-empty{
+      display:none;
+      margin-top:26px;
+      background:var(--white);
+      border:1px dashed var(--line-strong);
+      border-radius:18px;
+      padding:36px 24px;
+      text-align:center;
+    }
+    .news-empty.is-visible{ display:block; }
+    .news-empty p{
+      margin:0;
+      font-size:15px;
+      color:var(--text-soft);
+      font-weight:500;
+    }
+    .news-empty a{
+      color:var(--text);
+      font-weight:600;
+      border-bottom:1px solid var(--text);
+    }
+
+    @media (max-width: 1100px){
+      .news-grid{ grid-template-columns:repeat(2, 1fr); min-height:0; }
+    }
+    @media (max-width: 860px){
+      .news{ padding-top:6px; }
+      .news-grid{ grid-template-columns:1fr; }
+      .lang-chip{ padding:9px 14px; font-size:13px; }
+    }
   </style>
 
   <script type="application/ld+json">
@@ -1912,6 +2144,38 @@ deren Perspektiven bisher kaum vorkommen.</p>
                 <span class="fill soft"></span><span class="fill blue"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="fill blue"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="fill blue"></span><span class="fill blue"></span><span class="empty"></span><span class="empty"></span>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AKTUELLES -->
+      <section class="news" id="news" aria-labelledby="news-title">
+        <div class="container">
+          <div class="news-head">
+            <div>
+              <p class="section-eyebrow">Aktuelles</p>
+              <h2 class="news-title" id="news-title">Neues aus den <em>Zwischenwelten</em></h2>
+            </div>
+            <a href="/aktuelles" class="news-more" id="news-more">Alle Beiträge →</a>
+          </div>
+
+          <div class="lang-filter" role="group" aria-label="Beiträge nach Sprache filtern">
+            <span class="lang-filter-label">Sprache</span>
+            <button type="button" class="lang-chip" data-lang="all" aria-pressed="true">Alle</button>
+            <button type="button" class="lang-chip" data-lang="de" aria-pressed="false">Deutsch</button>
+            <button type="button" class="lang-chip" data-lang="en" aria-pressed="false">English</button>
+            <button type="button" class="lang-chip" data-lang="tr" aria-pressed="false">Türkçe</button>
+            <button type="button" class="lang-chip" data-lang="ru" aria-pressed="false">Русский</button>
+            <button type="button" class="lang-chip" data-lang="uk" aria-pressed="false">Українська</button>
+            <button type="button" class="lang-chip" data-lang="ar" aria-pressed="false">العربية</button>
+            <button type="button" class="lang-chip" data-lang="ku" aria-pressed="false">Kurdî</button>
+            <button type="button" class="lang-chip" data-lang="fa" aria-pressed="false">فارسی</button>
+          </div>
+
+          <div class="news-grid" id="news-grid" aria-live="polite"></div>
+
+          <div class="news-empty" id="news-empty">
+            <p>Noch keine Beiträge in dieser Sprache. <a href="/aktuelles">Alle Beiträge ansehen →</a></p>
           </div>
         </div>
       </section>
@@ -2152,6 +2416,67 @@ Verständigung über Glaubensgrenzen hinweg nicht nur möglich, sondern notwendi
       </div>
     </footer>
   </div>
+  <script>
+    (function(){
+      var section = document.getElementById('news');
+      if(!section || !window.fetch || !window.DOMParser){ return; }
+      var grid = document.getElementById('news-grid');
+      var empty = document.getElementById('news-empty');
+      var more = document.getElementById('news-more');
+      var chips = section.querySelectorAll('.lang-chip');
+      var LIMIT = 3;
+      var cards = [];
+      var current = 'all';
+
+      function render(){
+        var shown = [];
+        for(var i = 0; i < cards.length && shown.length < LIMIT; i++){
+          if(current === 'all' || cards[i].getAttribute('data-lang') === current){
+            shown.push(cards[i]);
+          }
+        }
+        grid.innerHTML = '';
+        shown.forEach(function(card){
+          grid.appendChild(document.importNode(card, true));
+        });
+        grid.hidden = shown.length === 0;
+        empty.classList.toggle('is-visible', shown.length === 0);
+        more.setAttribute('href', current === 'all' ? '/aktuelles' : '/aktuelles?lang=' + current);
+      }
+
+      chips.forEach(function(chip){
+        chip.addEventListener('click', function(){
+          current = chip.getAttribute('data-lang');
+          chips.forEach(function(c){
+            c.setAttribute('aria-pressed', c === chip ? 'true' : 'false');
+          });
+          render();
+        });
+      });
+
+      fetch('/aktuelles/index.html', { credentials: 'same-origin' })
+        .then(function(res){
+          if(!res.ok){ throw new Error('HTTP ' + res.status); }
+          return res.text();
+        })
+        .then(function(html){
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          cards = Array.prototype.slice.call(doc.querySelectorAll('.post-card[data-lang]'));
+          // Newest first; ties keep the order of the Aktuelles listing.
+          cards = cards.map(function(card, i){
+            var t = card.querySelector('time');
+            return { card: card, date: (t && t.getAttribute('datetime')) || '', i: i };
+          }).sort(function(a, b){
+            if(a.date === b.date){ return a.i - b.i; }
+            return a.date < b.date ? 1 : -1;
+          }).map(function(x){ return x.card; });
+          render();
+        })
+        .catch(function(){
+          section.hidden = true;
+        });
+    })();
+  </script>
   <script src="assets/consent.js" defer></script>
 </body>
 </html>
