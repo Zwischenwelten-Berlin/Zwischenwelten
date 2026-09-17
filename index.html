@@ -1806,22 +1806,10 @@
       justify-content:space-between;
       gap:24px;
       flex-wrap:wrap;
-      margin-bottom:4px;
+      margin-bottom:0;
     }
-    .news-title{
+    .news-eyebrow{
       margin:0;
-      font-size:clamp(28px, 3.4vw, 40px);
-      line-height:1.05;
-      letter-spacing:-0.04em;
-      font-weight:700;
-    }
-    .news-title em{
-      font-style:normal;
-      background:var(--accent);
-      padding:0 .15em;
-      border-radius:.1em;
-      box-decoration-break:clone;
-      -webkit-box-decoration-break:clone;
     }
     .news-more{
       display:inline-flex;
@@ -1842,7 +1830,7 @@
       flex-wrap:wrap;
       align-items:center;
       gap:10px;
-      margin:22px 0 0;
+      margin:14px 0 0;
       padding:0;
       list-style:none;
     }
@@ -2152,10 +2140,7 @@ deren Perspektiven bisher kaum vorkommen.</p>
       <section class="news" id="news" aria-labelledby="news-title">
         <div class="container">
           <div class="news-head">
-            <div>
-              <p class="section-eyebrow">Aktuelles</p>
-              <h2 class="news-title" id="news-title">Neues aus den <em>Zwischenwelten</em></h2>
-            </div>
+            <h2 class="section-eyebrow news-eyebrow" id="news-title">Aktuelles</h2>
             <a href="/aktuelles?lang=de" class="news-more" id="news-more">Alle Beiträge →</a>
           </div>
 
