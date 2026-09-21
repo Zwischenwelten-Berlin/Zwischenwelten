@@ -2,7 +2,9 @@
 """Publish a markdown manuscript as a ZWISCHENWELTEN blog post.
 
 Converts a .md file into a post that matches the house style (assets/blog.css),
-copies the cover image, registers the author, and adds a card to /aktuelles.
+stores the cover as an optimised JPEG + WebP set (cover_images.py), registers the
+author, adds a card to /aktuelles, and keeps hreflang links and sitemap.xml
+current (site_meta.py).
 
 The conversion is deliberately verbatim: headings, paragraphs, lists and quotes
 change shape, never wording. Before writing anything the script compares the
@@ -21,10 +23,11 @@ import html as htmllib
 import json
 import os
 import re
-import shutil
-import struct
 import sys
 import unicodedata
+
+import cover_images
+import site_meta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POSTS_DIR = os.path.join(ROOT, "aktuelles")
@@ -35,7 +38,13 @@ MANUSCRIPTS_DIR = os.path.join(IMG_DIR, "manuscripts")
 POSTS_JSON = os.path.join(IMG_DIR, "posts.json")
 AUTHOR_PAGES_DIR = os.path.join(ROOT, "journalistennetzwerk")
 NETWORK_PAGE = os.path.join(ROOT, "journalistennetzwerk.html")
-SITE = "https://zwischenwelten.berlin"
+SITE = site_meta.SITE
+
+# How wide the cover is actually shown, so the browser can pick the smallest
+# WebP that still looks sharp. Article: full container (--max is 1180px).
+# Cards: two columns above 860px, one below (see aktuelles/index.html).
+SIZES_ARTICLE = "(min-width: 1240px) 1180px, 94vw"
+SIZES_CARD = "(min-width: 861px) 570px, 94vw"
 
 
 def load_posts():
@@ -397,30 +406,6 @@ def check_fidelity(md_text, page_html):
 # --------------------------------------------------------------------------
 # Image
 # --------------------------------------------------------------------------
-def image_size(path):
-    with open(path, "rb") as fh:
-        head = fh.read(32)
-        if head[:8] == b"\x89PNG\r\n\x1a\n":
-            w, h = struct.unpack(">II", head[16:24])
-            return w, h
-        if head[:2] == b"\xff\xd8":
-            fh.seek(2)
-            while True:
-                b = fh.read(1)
-                while b and b != b"\xff":
-                    b = fh.read(1)
-                marker = fh.read(1)
-                if not marker:
-                    break
-                if marker[0] in range(0xC0, 0xCF) and marker[0] not in (0xC4, 0xC8, 0xCC):
-                    fh.read(3)
-                    h, w = struct.unpack(">HH", fh.read(4))
-                    return w, h
-                size = struct.unpack(">H", fh.read(2))[0]
-                fh.seek(size - 2, 1)
-    return None, None
-
-
 # --------------------------------------------------------------------------
 # Page + card rendering
 # --------------------------------------------------------------------------
@@ -435,6 +420,7 @@ PAGE = """<!DOCTYPE html>
   <meta name="theme-color" content="#123f7a">
   <meta name="color-scheme" content="light">
 
+  <link rel="canonical" href="{site}/aktuelles/{slug}">
   <link rel="icon" href="/favicon.ico">
 
   <meta property="og:type" content="article">
@@ -442,7 +428,15 @@ PAGE = """<!DOCTYPE html>
   <meta property="og:site_name" content="ZWISCHENWELTEN">
   <meta property="og:title" content="{title_plain}">
   <meta property="og:description" content="{description}">
+  <meta property="og:url" content="{site}/aktuelles/{slug}">
   <meta property="og:image" content="{site}{cover}">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{title_plain}">
+  <meta name="twitter:description" content="{description}">
+  <meta name="twitter:image" content="{site}{cover}">
+
+  {hreflang}
 
   <link rel="stylesheet" href="/assets/fonts.css">
   <link rel="stylesheet" href="/assets/consent.css">
@@ -520,7 +514,7 @@ PAGE = """<!DOCTYPE html>
         <section class="article-cover">
           <div class="container">
             <figure>
-              <img src="{cover}" alt="{alt}"{dims}>{caption_html}
+              <img src="{cover}" alt="{alt}"{dims}{srcset}>{caption_html}
             </figure>
           </div>
         </section>
@@ -577,7 +571,7 @@ PAGE = """<!DOCTYPE html>
 
 CARD = """            <a class="post-card" href="/aktuelles/{slug}" data-lang="{lang}" hreflang="{lang}" lang="{lang}">
               <div class="post-thumb">
-                <img src="{cover}" alt="{alt}" loading="lazy"{dims}>
+                <img src="{cover}" alt="{alt}" loading="lazy"{dims}{srcset}>
                 <span class="post-lang-badge"><span class="dot" aria-hidden="true"></span>{lang_label}</span>
               </div>
               <div class="post-info">
@@ -595,7 +589,7 @@ CARD = """            <a class="post-card" href="/aktuelles/{slug}" data-lang="{
 
 AUTHOR_CARD = """            <a class="post-card" href="/aktuelles/{slug}" data-lang="{lang}" hreflang="{lang}" lang="{lang}">
               <div class="post-thumb">
-                <img src="{cover}" alt="{alt}" loading="lazy"{dims}>
+                <img src="{cover}" alt="{alt}" loading="lazy"{dims}{srcset}>
                 <div class="post-badges">
                   <span class="post-lang-badge"><span class="dot" aria-hidden="true"></span>{lang_label}</span>{translation_badge}
                 </div>
@@ -621,7 +615,7 @@ AUTHOR_PAGE_TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                     "author_page_template.html")
 
 
-def render_author_page(name, role, bio_paragraphs, photo_rel):
+def render_author_page(name, role, bio_paragraphs, photo_rel, author_id=None):
     """Render a new author page from scripts/author_page_template.html.
 
     Manual placeholder replacement (not str.format) because the template's
@@ -635,7 +629,10 @@ def render_author_page(name, role, bio_paragraphs, photo_rel):
     # embedded double quotes unescaped (quote=False), which would break
     # those attributes, so both also get the same '"' -> '&quot;' pass
     # build_post's own PAGE template uses for its attribute values.
+    canonical = (f'  <link rel="canonical" href="{SITE}/journalistennetzwerk/{author_id}">'
+                 if author_id else "")
     for key, val in [
+        ("__CANONICAL__", canonical),
         ("__NAME__", esc(name).replace('"', "&quot;")),
         ("__ROLE__", esc(role)),
         ("__PHOTO__", photo_rel),
@@ -931,27 +928,44 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         raise PublishError(f"{page_path} already exists. Pass a different --slug.")
 
     # ---- cover ------------------------------------------------------------
-    old_cover_path = None
-    if image_path is None:
-        if not update:
-            raise PublishError("image_path fehlt (nur bei --update optional).")
-        matches = glob.glob(os.path.join(IMG_DIR, f"{post_slug}-cover.*"))
-        if not matches:
-            raise PublishError(f"Kein bestehendes Cover für '{post_slug}' gefunden.")
-        existing_cover = matches[0]
-        ext = os.path.splitext(existing_cover)[1].lower()
-        cover_rel = f"/assets/blog/{post_slug}-cover{ext}"
-        w, h = image_size(existing_cover)
-        dims = f' width="{w}" height="{h}"' if w and h else ""
-    else:
-        ext = os.path.splitext(image_path)[1].lower() or ".jpg"
-        cover_rel = f"/assets/blog/{post_slug}-cover{ext}"
-        w, h = image_size(image_path)
-        dims = f' width="{w}" height="{h}"' if w and h else ""
-        if update:
-            existing = glob.glob(os.path.join(IMG_DIR, f"{post_slug}-cover.*"))
-            if existing and os.path.splitext(existing[0])[1].lower() != ext:
-                old_cover_path = existing[0]
+    # Covers are stored as <slug>-cover.jpg plus WebP variants (cover_images).
+    # cover_source is what that set gets built from on write; None means the
+    # set already on disk is kept as it is.
+    cover_rel = f"/assets/blog/{post_slug}-cover.jpg"
+    try:
+        current = cover_images.existing(post_slug, IMG_DIR)
+        if (image_path is not None and current
+                and os.path.exists(image_path)
+                and os.path.samefile(image_path, current["files"][0])):
+            # The repo's own optimised cover handed back in (an edit-mode
+            # publish that keeps the cover): re-encoding it would only lose
+            # quality.
+            image_path = None
+        cover_source = image_path
+        if image_path is None:
+            if not update:
+                raise PublishError("image_path fehlt (nur bei --update optional).")
+            if not current:
+                # published before covers were optimised — convert it now
+                legacy = glob.glob(os.path.join(IMG_DIR, f"{post_slug}-cover.*"))
+                if not legacy:
+                    raise PublishError(f"Kein bestehendes Cover für '{post_slug}' gefunden.")
+                cover_source = legacy[0]
+        cover = cover_images.plan(cover_source) if cover_source else current
+    except cover_images.CoverError as e:
+        raise PublishError(str(e))
+    dims = f' width="{cover["width"]}" height="{cover["height"]}"'
+    cover_files = [os.path.join(IMG_DIR, f"{post_slug}-cover.jpg")] + [
+        os.path.join(IMG_DIR, f"{post_slug}-cover-{w}.webp") for w in cover["widths"]]
+    stale_covers = ([p for p in cover_images.all_files(post_slug, IMG_DIR)
+                     if p not in cover_files] if cover_source else [])
+
+    # ---- hreflang -----------------------------------------------------------
+    # Computed against the registry as it will be once this post is in it, so
+    # a preview already shows the links the published page will carry.
+    posts_view = dict(load_posts()["posts"])
+    posts_view[post_slug] = {"lang": lang, "date": date, "original_slug": original_slug}
+    siblings = [s for _l, s in site_meta.group_of(post_slug, posts_view) if s != post_slug]
 
     # ---- assemble ---------------------------------------------------------
     y, mo, d = (int(x) for x in date.split("-"))
@@ -979,6 +993,8 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         iso_date=date, date_label=date_label, author=esc(author_display),
         author_type="Organization" if author_is_org else "Person",
         lang_label=cfg["label"], cover=cover_rel, dims=dims,
+        slug=post_slug, hreflang=site_meta.hreflang_block(post_slug, posts_view),
+        srcset=cover_images.img_attrs(post_slug, cover["widths"], SIZES_ARTICLE),
         alt=esc(alt or title).replace('"', "&quot;"),
         caption_html=f'\n              <figcaption>{esc(caption)}</figcaption>' if caption else "",
         body=body, by=cfg["by"], byline=byline, published_line=published_line, back=cfg["back"],
@@ -994,8 +1010,9 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
             diffs=word_diffs)
     info(f"Fidelity check: {len(a)} words, identical to the manuscript. ✓")
 
+    card_srcset = cover_images.img_attrs(post_slug, cover["widths"], SIZES_CARD)
     card = CARD.format(
-        slug=post_slug, lang=lang, cover=cover_rel, dims=dims,
+        slug=post_slug, lang=lang, cover=cover_rel, dims=dims, srcset=card_srcset,
         alt=esc(alt or title).replace('"', "&quot;"),
         lang_label=cfg["label"], iso_date=date, date_label=date_label,
         author=esc(author_display), title_plain=esc(title),
@@ -1004,15 +1021,17 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
 
     files = [
         os.path.relpath(page_path, ROOT),
-        os.path.relpath(os.path.join(IMG_DIR, f"{post_slug}-cover{ext}"), ROOT),
+        *(os.path.relpath(p, ROOT) for p in cover_files + stale_covers),
         os.path.relpath(INDEX, ROOT),
         os.path.relpath(os.path.join(MANUSCRIPTS_DIR, post_slug + ".md"), ROOT),
         os.path.relpath(POSTS_JSON, ROOT),
     ]
     if author_new:
         files.append(os.path.relpath(AUTHORS, ROOT))
-    if old_cover_path:
-        files.append(os.path.relpath(old_cover_path, ROOT))
+    # translations of the same article get their hreflang links refreshed
+    files += [os.path.relpath(os.path.join(POSTS_DIR, s + ".html"), ROOT) for s in siblings
+              if os.path.exists(os.path.join(POSTS_DIR, s + ".html"))]
+    files.append("sitemap.xml")
 
     # ---- author page --------------------------------------------------------
     # Originals and translations both get a card; translations are marked with
@@ -1028,16 +1047,9 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         # ---- write ----------------------------------------------------------
         with open(page_path, "w", encoding="utf-8") as fh:
             fh.write(page)
-        if image_path is not None:
-            cover_dest = os.path.join(IMG_DIR, f"{post_slug}-cover{ext}")
-            # image_path can legitimately be the repo's own cover file
-            # (e.g. an edit-mode publish that inherits the untouched cover)
-            # — copying a file onto itself raises shutil.SameFileError, so
-            # skip the copy in that case instead of crashing mid-write.
-            if not (os.path.exists(cover_dest) and os.path.samefile(image_path, cover_dest)):
-                shutil.copyfile(image_path, cover_dest)
-        if old_cover_path:
-            os.remove(old_cover_path)
+        if cover_source:
+            # also removes stale_covers (an old .png, variants of a wider cover)
+            cover_images.write_set(cover_source, post_slug, IMG_DIR)
 
         index_html = open(INDEX, encoding="utf-8").read()
         index_html, chip_added = add_chip(index_html, lang)
@@ -1057,6 +1069,8 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
             "original_slug": original_slug, "locked": False,
         }
         save_posts(posts_registry)
+        site_meta.sync_hreflang(post_slug, posts_registry["posts"], POSTS_DIR)
+        site_meta.write_sitemap(ROOT, posts_registry["posts"])
 
         if author_new:
             with open(AUTHORS, "w", encoding="utf-8") as fh:
@@ -1065,7 +1079,7 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
 
         if author_page_rel:
             acard = AUTHOR_CARD.format(
-                slug=post_slug, lang=lang, cover=cover_rel, dims=dims,
+                slug=post_slug, lang=lang, cover=cover_rel, dims=dims, srcset=card_srcset,
                 alt=esc(alt or title).replace('"', "&quot;"),
                 lang_label=cfg["label"],
                 translation_badge=TRANSLATION_BADGE if original_slug else "",
@@ -1085,6 +1099,12 @@ def build_post(md_text, image_path, lang, date, author=None, slug=None, tag=None
         "cover_rel": cover_rel, "files": files,
         "chip_added": chip_added, "author_page": author_page_rel,
     }
+
+
+def refresh_sitemap():
+    """Rewrite sitemap.xml from the current registry and pages on disk.
+    Returns its repo-relative path, ready for a `files` list."""
+    return os.path.relpath(site_meta.write_sitemap(ROOT, load_posts()["posts"]), ROOT)
 
 
 def delete_post(slug):
@@ -1123,7 +1143,7 @@ def delete_post(slug):
             files.append(os.path.relpath(path, ROOT))
 
     drop(os.path.join(POSTS_DIR, slug + ".html"))
-    for cover in sorted(glob.glob(os.path.join(IMG_DIR, f"{slug}-cover.*"))):
+    for cover in cover_images.all_files(slug, IMG_DIR):
         drop(cover)
     drop(os.path.join(MANUSCRIPTS_DIR, slug + ".md"))
 
@@ -1149,6 +1169,12 @@ def delete_post(slug):
     del posts[slug]
     save_posts(registry)
     files.append(os.path.relpath(POSTS_JSON, ROOT))
+
+    # The pages this one was a translation of stop advertising it.
+    if entry.get("original_slug"):
+        files += [os.path.relpath(p, ROOT) for p in
+                  site_meta.sync_hreflang(entry["original_slug"], posts, POSTS_DIR)]
+    files.append(os.path.relpath(site_meta.write_sitemap(ROOT, posts), ROOT))
 
     return {"title": entry.get("title") or slug, "files": files}
 
@@ -1199,18 +1225,17 @@ def main():
             die("Nothing was written. Fix the converter or the manuscript and retry.")
         die(str(e))
 
-    ext = os.path.splitext(r["cover_rel"])[1].lower() or ".jpg"
-
     if args.dry_run:
         print(f"\n[dry run] would write {os.path.join(POSTS_DIR, r['slug'] + '.html')}")
         if args.image:
-            print(f"[dry run] would copy  {args.image} → {IMG_DIR}/{r['slug']}-cover{ext}")
+            print(f"[dry run] would optimise {args.image} → {IMG_DIR}/{r['slug']}-cover.jpg (+ WebP)")
         print(f"[dry run] would add a {LANGS[args.lang]['label']} card to aktuelles/index.html")
         return
 
     print(f"\n✓ Published /aktuelles/{r['slug']}")
     info(f"page   aktuelles/{r['slug']}.html")
-    info(f"cover  assets/blog/{r['slug']}-cover{ext}")
+    info(f"cover  assets/blog/{r['slug']}-cover.jpg (+ WebP variants)")
+    info("seo    sitemap.xml and hreflang links refreshed")
     info("card   added to aktuelles/index.html" +
         (f" (+ {LANGS[args.lang]['label']} filter chip)" if r["chip_added"] else ""))
     print(f"\nPreview:  python3 dev-server.py  →  http://localhost:8000/aktuelles/{r['slug']}\n")

@@ -20,6 +20,7 @@ import glob
 import http.server
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -68,6 +69,18 @@ def _cover_path_for(slug):
     that monkeypatch it see the patched value."""
     matches = glob.glob(os.path.join(publish_post.IMG_DIR, f"{slug}-cover.*"))
     return matches[0] if matches else None
+
+
+def _is_preview_cover(path):
+    """True when path is the previewed post's cover — the .jpg or one of its
+    srcset .webp variants. None of them exist before publishing, so the
+    preview answers all of them with the uploaded file; the browser would
+    otherwise pick a WebP variant and show a broken image."""
+    rel, src = SESSION["cover_rel"], SESSION["cover_path"]
+    if not (rel and src and os.path.exists(src)):
+        return False
+    stem = rel[:-len(".jpg")]
+    return path == rel or re.fullmatch(re.escape(stem) + r"-\d+\.webp", path) is not None
 
 
 def _author_photo_path(author_id):
@@ -323,12 +336,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(404, "No preview yet")
             else:
                 self.send_html(SESSION["preview"]["page_html"])
-        elif (SESSION["cover_rel"] and path == SESSION["cover_rel"] and SESSION["cover_path"]
-              and os.path.exists(SESSION["cover_path"])):
+        elif _is_preview_cover(path):
             with open(SESSION["cover_path"], "rb") as fh:
                 data = fh.read()
             self.send_response(200)
-            self.send_header("Content-Type", "image/png" if path.endswith(".png") else "image/jpeg")
+            # the type of the uploaded file, not of the URL it stands in for
+            self.send_header("Content-Type", "image/png"
+                             if SESSION["cover_path"].lower().endswith(".png") else "image/jpeg")
             self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
@@ -854,7 +868,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     fh.write(photo_bytes)
                 photo_rel = "/" + os.path.relpath(photo_path, publish_post.ROOT)
                 bio_paras = [p.strip() for p in (page.get("bio") or "").split("\n\n")]
-                html = publish_post.render_author_page(name, role, bio_paras, photo_rel)
+                html = publish_post.render_author_page(name, role, bio_paras, photo_rel,
+                                                        author_id=author_id)
                 apath = publish_post.author_page_path(author_id)
                 with open(apath, "w", encoding="utf-8") as fh:
                     fh.write(html)
@@ -863,6 +878,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 files += _write_network_page(net_update)
                 # Posts published before the page existed link to it now.
                 files += publish_post.link_author_bylines(author_id)
+                # a new author page is a new URL for search engines
+                files.append(publish_post.refresh_sitemap())
 
             ok, stage, log = git_flow(files, f"content: Autor:in {name} registriert")
             self.send_json({"ok": True, "id": author_id, "canonical": name,
@@ -967,7 +984,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 photo_rel = "/" + os.path.relpath(photo_path, publish_post.ROOT)
                 bio_paras = [p.strip() for p in (page.get("bio") or "").split("\n\n")]
                 html = publish_post.render_author_page(
-                    entry["canonical"], role, bio_paras, photo_rel)
+                    entry["canonical"], role, bio_paras, photo_rel, author_id=author_id)
                 apath = publish_post.author_page_path(author_id)
                 with open(apath, "w", encoding="utf-8") as fh:
                     fh.write(html)
@@ -975,6 +992,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 files += _write_network_page(net_update)
                 # Posts published before the page existed link to it now.
                 files += publish_post.link_author_bylines(author_id)
+                # a new author page is a new URL for search engines
+                files.append(publish_post.refresh_sitemap())
 
             ok, stage, log = git_flow(
                 files, f"content: Autor:in {entry['canonical']} aktualisiert")

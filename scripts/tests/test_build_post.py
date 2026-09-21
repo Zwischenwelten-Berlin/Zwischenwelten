@@ -51,6 +51,20 @@ def cover(tmp_path):
     return str(p)
 
 
+@pytest.fixture
+def big_cover(tmp_path):
+    from PIL import Image
+    p = tmp_path / "gross.png"
+    Image.new("RGB", (3200, 1600), (20, 60, 120)).save(p)
+    return str(p)
+
+
+def cover_names(repo, slug):
+    import cover_images
+    return [os.path.basename(p) for p in
+            cover_images.all_files(slug, str(repo / "assets" / "blog"))]
+
+
 INDEX_MIN = """<html><body>
             <button type="button" class="lang-chip" data-lang="de" aria-pressed="false">Deutsch</button>
 <div class="posts-grid" id="posts-grid">
@@ -105,7 +119,7 @@ def test_build_post_renders_without_writing(cover):
     assert not r["author_new"]
     assert "<h2>Zwischentitel</h2>" in r["page_html"]
     assert '<blockquote class="pull-quote">' in r["page_html"]
-    assert r["cover_rel"] == "/assets/blog/ein-test-cover.png"
+    assert r["cover_rel"] == "/assets/blog/ein-test-cover.jpg"
     assert "aktuelles/ein-test.html" in r["files"]
     # write=False must not touch the repo
     assert not os.path.exists(os.path.join(publish_post.ROOT, "aktuelles", "ein-test.html"))
@@ -280,33 +294,52 @@ def test_update_replaces_page_and_card(repo, cover, author_page):
     assert author_html.count('href="/aktuelles/ein-test"') == 1
     ms = (repo / "assets" / "blog" / "manuscripts" / "ein-test.md").read_text(encoding="utf-8")
     assert "Geänderter Absatz" in ms
-    assert r["cover_rel"] == "/assets/blog/ein-test-cover.png"  # kept
+    assert r["cover_rel"] == "/assets/blog/ein-test-cover.jpg"  # kept
 
 
-def test_update_with_new_cover_replaces_file(repo, cover, tmp_path):
+def test_update_with_new_cover_replaces_file(repo, cover, big_cover):
     publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
-    jpg = tmp_path / "neu.jpg"
-    jpg.write_bytes(COVER_JPG)
-    r = publish_post.build_post(MD, str(jpg), lang="de", date="2026-08-03",
+    assert (repo / "assets" / "blog" / "ein-test-cover-1.webp").exists()
+    r = publish_post.build_post(MD, big_cover, lang="de", date="2026-08-03",
                                 slug="ein-test", update=True, write=True)
     assert r["cover_rel"] == "/assets/blog/ein-test-cover.jpg"
-    assert not (repo / "assets" / "blog" / "ein-test-cover.png").exists()
-    assert "assets/blog/ein-test-cover.png" in r["files"]  # staged deletion
+    assert cover_names(repo, "ein-test") == [
+        "ein-test-cover-1600.webp", "ein-test-cover-800.webp", "ein-test-cover.jpg"]
+    assert "assets/blog/ein-test-cover-1.webp" in r["files"]  # staged deletion
 
 
-def test_update_with_image_path_same_as_existing_cover_does_not_raise(repo, cover):
+def test_update_with_image_path_same_as_existing_cover_does_not_raise(repo, big_cover):
     # Regression for C1: passing the repo's own cover file back in as
     # image_path (as the app's edit-publish path can do) must not blow up
-    # with shutil.SameFileError mid-write.
-    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
-    existing_cover = str(repo / "assets" / "blog" / "ein-test-cover.png")
+    # mid-write — and must not re-encode the JPEG a second time.
+    publish_post.build_post(MD, big_cover, lang="de", date="2026-08-03", write=True)
+    existing_cover = repo / "assets" / "blog" / "ein-test-cover.jpg"
+    before = existing_cover.read_bytes()
     changed = MD.replace("Erster Absatz", "Geänderter Absatz")
-    r = publish_post.build_post(changed, existing_cover, lang="de", date="2026-08-03",
+    r = publish_post.build_post(changed, str(existing_cover), lang="de", date="2026-08-03",
                                 slug="ein-test", update=True, write=True)
     page = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
     assert "Geänderter Absatz" in page
-    assert os.path.exists(existing_cover)
-    assert r["cover_rel"] == "/assets/blog/ein-test-cover.png"
+    assert existing_cover.read_bytes() == before
+    assert r["cover_rel"] == "/assets/blog/ein-test-cover.jpg"
+
+
+def test_update_converts_a_legacy_cover_in_place(repo, cover, big_cover):
+    # Posts published before covers were optimised carry a lone .png.
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    blog = repo / "assets" / "blog"
+    for name in cover_names(repo, "ein-test"):
+        os.remove(blog / name)
+    shutil.copyfile(big_cover, blog / "ein-test-cover.png")
+
+    r = publish_post.build_post(MD, None, lang="de", date="2026-08-03",
+                                slug="ein-test", update=True, write=True)
+
+    assert cover_names(repo, "ein-test") == [
+        "ein-test-cover-1600.webp", "ein-test-cover-800.webp", "ein-test-cover.jpg"]
+    assert "assets/blog/ein-test-cover.png" in r["files"]      # staged deletion
+    page = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
+    assert 'src="/assets/blog/ein-test-cover.jpg"' in page
 
 
 def test_update_requires_existing_post(repo, cover):
@@ -334,7 +367,7 @@ def test_render_author_page(repo):
     assert "transform:scale(2.6)" not in html
     # the generated grid must accept cards
     card = publish_post.AUTHOR_CARD.format(
-        slug="x", lang="de", cover="/c.png", dims="", alt="", lang_label="Deutsch",
+        slug="x", lang="de", cover="/c.png", dims="", srcset="", alt="", lang_label="Deutsch",
         translation_badge="", iso_date="2026-01-01",
         date_label="1. Januar 2026", title_plain="X", excerpt="", read_more="Weiterlesen")
     assert "/aktuelles/x" in publish_post.upsert_author_card(html, card, "x")
@@ -397,7 +430,7 @@ def test_delete_post_removes_page_cover_manuscript_and_registry_entry(repo, cove
     publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
     publish_post.delete_post("ein-test")
     assert not os.path.exists(repo / "aktuelles" / "ein-test.html")
-    assert not os.path.exists(repo / "assets" / "blog" / "ein-test-cover.png")
+    assert cover_names(repo, "ein-test") == []
     assert not os.path.exists(repo / "assets" / "blog" / "manuscripts" / "ein-test.md")
     reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
     assert "ein-test" not in reg["posts"]
@@ -408,7 +441,8 @@ def test_delete_post_returns_title_and_removed_files(repo, cover):
     r = publish_post.delete_post("ein-test")
     assert r["title"] == "Ein Test"
     assert "aktuelles/ein-test.html" in r["files"]
-    assert "assets/blog/ein-test-cover.png" in r["files"]
+    assert "assets/blog/ein-test-cover.jpg" in r["files"]
+    assert "assets/blog/ein-test-cover-1.webp" in r["files"]
     assert "assets/blog/manuscripts/ein-test.md" in r["files"]
     assert "assets/blog/posts.json" in r["files"]
     assert "aktuelles/index.html" in r["files"]
@@ -504,9 +538,10 @@ def test_delete_post_keeps_language_chip_while_another_post_uses_it(repo, cover)
 
 def test_delete_post_without_cover_on_disk_still_succeeds(repo, cover):
     publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
-    os.remove(repo / "assets" / "blog" / "ein-test-cover.png")
+    for name in cover_names(repo, "ein-test"):
+        os.remove(repo / "assets" / "blog" / name)
     r = publish_post.delete_post("ein-test")
-    assert "assets/blog/ein-test-cover.png" not in r["files"]
+    assert not any("ein-test-cover" in f for f in r["files"])
     reg = json.loads((repo / "assets" / "blog" / "posts.json").read_text())
     assert "ein-test" not in reg["posts"]
 
@@ -539,3 +574,108 @@ def test_link_author_bylines_leaves_other_authors_posts_alone(repo, cover):
     (repo / "journalistennetzwerk" / "dominique-hensel.html").write_text("<html>", encoding="utf-8")
     assert publish_post.link_author_bylines("dominique-hensel") == []
     assert publish_post.link_author_bylines("andrei-schnell") == []  # no page at all
+
+
+# ---- SEO head, responsive covers, hreflang, sitemap ------------------------
+MD_TR = MD.replace("# Ein Test", "# Bir Deneme")
+
+
+def test_page_head_has_canonical_og_url_and_twitter_card(cover):
+    html = publish_post.build_post(MD, cover, lang="de", date="2026-08-03",
+                                   write=False)["page_html"]
+    assert '<link rel="canonical" href="https://zwischenwelten.berlin/aktuelles/ein-test">' in html
+    assert '<meta property="og:url" content="https://zwischenwelten.berlin/aktuelles/ein-test">' in html
+    assert '<meta name="twitter:card" content="summary_large_image">' in html
+    assert '<meta name="twitter:title" content="Ein Test">' in html
+    assert ('<meta name="twitter:image" '
+            'content="https://zwischenwelten.berlin/assets/blog/ein-test-cover.jpg">') in html
+
+
+def test_write_stores_optimised_cover_set_and_lists_it(repo, big_cover):
+    r = publish_post.build_post(MD, big_cover, lang="de", date="2026-08-03", write=True)
+    assert cover_names(repo, "ein-test") == [
+        "ein-test-cover-1600.webp", "ein-test-cover-800.webp", "ein-test-cover.jpg"]
+    for name in cover_names(repo, "ein-test"):
+        assert f"assets/blog/{name}" in r["files"]
+
+
+def test_page_and_card_images_carry_srcset_and_real_dimensions(repo, big_cover):
+    r = publish_post.build_post(MD, big_cover, lang="de", date="2026-08-03", write=True)
+    srcset = ('srcset="/assets/blog/ein-test-cover-800.webp 800w, '
+              '/assets/blog/ein-test-cover-1600.webp 1600w"')
+    for html in (r["page_html"], r["card_html"]):
+        assert 'src="/assets/blog/ein-test-cover.jpg"' in html
+        assert srcset in html
+        assert 'sizes="' in html
+        assert 'width="1600" height="800"' in html
+
+
+def test_unreadable_cover_is_a_publish_error(repo, tmp_path):
+    bad = tmp_path / "kaputt.png"
+    bad.write_bytes(b"kein bild")
+    with pytest.raises(publish_post.PublishError):
+        publish_post.build_post(MD, str(bad), lang="de", date="2026-08-03", write=True)
+    assert not (repo / "aktuelles" / "ein-test.html").exists()
+
+
+def test_post_without_translations_has_empty_hreflang_block(repo, cover):
+    html = publish_post.build_post(MD, cover, lang="de", date="2026-08-03",
+                                   write=True)["page_html"]
+    assert "<!-- hreflang:start -->" in html
+    assert 'rel="alternate"' not in html
+
+
+def test_translation_links_both_pages_and_stages_the_original(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    r = publish_post.build_post(MD_TR, cover, lang="tr", date="2026-08-04",
+                                slug="ein-test-tr", original_slug="ein-test", write=True)
+
+    for slug in ("ein-test", "ein-test-tr"):
+        page = (repo / "aktuelles" / f"{slug}.html").read_text(encoding="utf-8")
+        assert 'hreflang="de" href="https://zwischenwelten.berlin/aktuelles/ein-test"' in page
+        assert 'hreflang="tr" href="https://zwischenwelten.berlin/aktuelles/ein-test-tr"' in page
+        assert 'hreflang="x-default" href="https://zwischenwelten.berlin/aktuelles/ein-test"' in page
+    assert "aktuelles/ein-test.html" in r["files"]
+
+
+def test_translation_preview_already_shows_its_hreflang_links(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    r = publish_post.build_post(MD_TR, cover, lang="tr", date="2026-08-04",
+                                slug="ein-test-tr", original_slug="ein-test", write=False)
+    assert 'hreflang="tr"' in r["page_html"]
+    assert 'hreflang="de"' in r["page_html"]
+    original = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
+    assert 'hreflang="tr"' not in original          # preview writes nothing
+
+
+def test_publish_writes_sitemap_and_stages_it(repo, cover):
+    r = publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    sitemap = (repo / "sitemap.xml").read_text(encoding="utf-8")
+    assert "<loc>https://zwischenwelten.berlin/aktuelles/ein-test</loc>" in sitemap
+    assert "sitemap.xml" in r["files"]
+
+
+def test_delete_translation_unlinks_the_original_and_updates_sitemap(repo, cover):
+    publish_post.build_post(MD, cover, lang="de", date="2026-08-03", write=True)
+    publish_post.build_post(MD_TR, cover, lang="tr", date="2026-08-04",
+                            slug="ein-test-tr", original_slug="ein-test", write=True)
+
+    r = publish_post.delete_post("ein-test-tr")
+
+    original = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
+    assert 'rel="alternate"' not in original
+    assert "ein-test-tr" not in (repo / "sitemap.xml").read_text(encoding="utf-8")
+    assert "aktuelles/ein-test.html" in r["files"]
+    assert "sitemap.xml" in r["files"]
+    assert cover_names(repo, "ein-test-tr") == []
+    assert len(cover_names(repo, "ein-test")) == 2      # the original keeps its cover
+
+
+def test_author_page_gets_a_canonical_url(repo):
+    html = publish_post.render_author_page("Ayşe Örnek", "Journalistin", ["Bio."],
+                                           "/assets/autoren/ayse-ornek.png",
+                                           author_id="ayse-ornek")
+    assert ('<link rel="canonical" '
+            'href="https://zwischenwelten.berlin/journalistennetzwerk/ayse-ornek">') in html
+    assert "__CANONICAL__" not in publish_post.render_author_page(
+        "Ayşe Örnek", "Journalistin", ["Bio."], "/assets/autoren/ayse-ornek.png")

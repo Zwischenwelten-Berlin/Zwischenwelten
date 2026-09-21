@@ -57,6 +57,25 @@ report looks right.
 To edit an already-published post, add `--update` (and `--slug` of the existing post);
 `--image` becomes optional and, if omitted, the existing cover is kept.
 
+## Cover, hreflang and sitemap — all automatic
+
+`build_post` no longer copies the cover as it is. Whatever `.jpg`/`.png` you pass becomes
+`assets/blog/<slug>-cover.jpg` (at most 1600 px wide, metadata stripped) plus WebP
+variants `<slug>-cover-<width>.webp`, and every `<img>` gets `srcset`/`sizes`
+(`scripts/cover_images.py`, needs Pillow — it is in `scripts/requirements.txt`). Do not
+pre-shrink covers and never commit a multi-megabyte PNG next to them.
+
+Every publish, update and delete also (`scripts/site_meta.py`):
+
+- rewrites the `<!-- hreflang:start/end -->` block in the head of the post **and of every
+  other language version of the same article** — those sibling pages show up in `files`
+  and must be committed with the post;
+- rewrites `sitemap.xml`.
+
+None of this touches article text, so it applies to locked posts as well.
+`scripts/backfill_seo.py` was the one-time migration of the posts that predate this; it
+is idempotent and safe to re-run.
+
 ## Author pages
 
 Authors can have a profile page at `journalistennetzwerk/<author-id>.html`, where

@@ -113,11 +113,11 @@ def test_edit_publish_without_cover_replacement_does_not_crash(repo, cover):
     _, payload = h.sent
     assert payload["ok"] and payload["fidelity_ok"], payload
 
-    cover_path = repo / "assets" / "blog" / "ein-test-cover.png"
+    cover_path = repo / "assets" / "blog" / "ein-test-cover.jpg"
     assert cover_path.exists()
     r = publish_post.build_post(**publish_app.SESSION["publish_args"], write=True)
     assert cover_path.exists()
-    assert r["cover_rel"] == "/assets/blog/ein-test-cover.png"
+    assert r["cover_rel"] == "/assets/blog/ein-test-cover.jpg"
     page = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
     assert "Geänderter Absatz" in page
 
@@ -134,8 +134,8 @@ def test_translate_still_copies_inherited_cover_to_new_slug(repo, cover):
     assert publish_app.SESSION["publish_args"]["image_path"] is not None
 
     r = publish_post.build_post(**publish_app.SESSION["publish_args"], write=True)
-    assert (repo / "assets" / "blog" / "ein-test-tr-cover.png").exists()
-    assert r["cover_rel"] == "/assets/blog/ein-test-tr-cover.png"
+    assert (repo / "assets" / "blog" / "ein-test-tr-cover.jpg").exists()
+    assert r["cover_rel"] == "/assets/blog/ein-test-tr-cover.jpg"
 
 
 def test_replace_cover_swaps_session_cover_and_invalidates_preview(repo, cover):
@@ -468,8 +468,7 @@ def test_convert_without_translate_flag_resets_leaked_translate_mode(repo, cover
     assert publish_app.SESSION["mode"] == "translate"
 
     h.api_convert(_convert_body(
-        cover_name="cover.jpg",
-        cover_b64=base64.b64encode(b"fake-cover-bytes").decode()))
+        cover_name="cover.png", cover_b64=COVER_PNG_B64))   # a real image: the preview reads it
     _, payload = h.sent
     assert payload["ok"], payload
     assert publish_app.SESSION["mode"] == "new"
@@ -752,3 +751,18 @@ def test_update_author_with_page_links_existing_post_bylines(repo, cover, monkey
     html = (repo / "aktuelles" / "ein-test.html").read_text(encoding="utf-8")
     assert '<a href="/journalistennetzwerk/dominique-hensel">Dominique Hensel</a>' in html
     assert os.path.join("aktuelles", "ein-test.html") in calls["files"]
+
+
+def test_preview_serves_the_upload_for_the_cover_and_its_webp_variants(tmp_path):
+    upload = tmp_path / "upload.png"
+    upload.write_bytes(b"x")
+    publish_app.SESSION.update(cover_path=str(upload),
+                               cover_rel="/assets/blog/ein-test-cover.jpg")
+    assert publish_app._is_preview_cover("/assets/blog/ein-test-cover.jpg")
+    assert publish_app._is_preview_cover("/assets/blog/ein-test-cover-800.webp")
+    assert not publish_app._is_preview_cover("/assets/blog/ein-test-de-cover-800.webp")
+    assert not publish_app._is_preview_cover("/assets/blog/anderer-cover.jpg")
+
+
+def test_preview_cover_needs_an_active_upload():
+    assert not publish_app._is_preview_cover("/assets/blog/ein-test-cover.jpg")

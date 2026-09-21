@@ -1,4 +1,6 @@
 # publish app: Word (.docx) import
 mammoth
+# cover images: resize, JPEG + WebP variants
+Pillow
 # dev only: tests
 pytest
