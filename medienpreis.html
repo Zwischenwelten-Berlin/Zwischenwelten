@@ -44,6 +44,34 @@
       box-decoration-break:clone;
       -webkit-box-decoration-break:clone;
     }
+    .closed-notice{
+      display:flex;
+      align-items:flex-start;
+      gap:14px;
+      margin:0 0 28px;
+      padding:16px 20px;
+      max-width:760px;
+      background:rgba(226,133,30,0.12);
+      border:1px solid rgba(226,133,30,0.45);
+      border-left:5px solid var(--accent);
+      border-radius:12px;
+      color:var(--text);
+    }
+    .closed-notice-icon{
+      flex:0 0 auto;
+      font-size:22px;
+      line-height:1.3;
+    }
+    .closed-notice p{
+      margin:0;
+      font-size:16px;
+      line-height:1.5;
+    }
+    .closed-notice strong{
+      display:block;
+      font-size:18px;
+      margin-bottom:2px;
+    }
     .price-list li{ font-size:16px; }
     .price-list li strong{ color:var(--text); }
     .prose-card.is-dark .price-list li strong{ color:#fff; }
@@ -205,6 +233,22 @@
       padding-bottom:2px;
     }
     .email-cta:hover{ border-bottom-color:var(--text); }
+    .email-cta.is-closed{
+      color:var(--text-soft);
+      border-bottom-color:var(--line-strong);
+    }
+    .email-cta.is-closed .email-address{ text-decoration:line-through; }
+    .closed-chip{
+      display:inline-block;
+      padding:3px 10px;
+      border-radius:999px;
+      background:var(--accent);
+      color:#fff;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:0.04em;
+      text-transform:uppercase;
+    }
 
     /* Big award date */
     .award-date{
@@ -249,6 +293,10 @@
       <!-- HERO -->
       <section class="page-hero" aria-labelledby="page-title">
         <div class="container">
+          <div class="closed-notice" role="status">
+            <span class="closed-notice-icon" aria-hidden="true">🔒</span>
+            <p><strong>Die Einreichungsfrist ist beendet.</strong>Für den Zwischenwelten Medienpreis 2026 werden keine Beiträge mehr angenommen. Einsendeschluss war der 15. September 2026. Vielen Dank für alle Einreichungen! Die Preisverleihung findet am 3. Oktober 2026 in Berlin statt.</p>
+          </div>
           <p class="medialog-epigraph">Demokratie lebt von Öffentlichkeit. Öffentlichkeit lebt von Vielfalt. Vielfalt braucht Medien.</p>
           <h1 class="page-title" id="page-title">Zwischenwelten Medienpreis <em>2026</em></h1>
           <p class="medialog-slogan">„Meine Einheit. Deine Einheit. <em>Keine Einheit?</em>“</p>
@@ -423,8 +471,12 @@
 
               <h3>So reichen Sie ein</h3>
               <p>Bitte senden Sie Ihren Beitrag mit einer kurzen Beschreibung (max. 300 Wörter), Ihren Kontaktdaten sowie einem Nachweis des Berlin-Bezugs per E-Mail an:</p>
-              <p><a class="email-cta" href="mailto:Medienpreis@zwischenwelten.berlin">✉ Medienpreis@zwischenwelten.berlin</a></p>
-              <p>Für Rückfragen stehen wir gerne zur Verfügung.</p>
+              <div class="closed-notice" role="status">
+                <span class="closed-notice-icon" aria-hidden="true">🔒</span>
+                <p><strong>Die Einreichungsfrist ist beendet.</strong>Für den Zwischenwelten Medienpreis 2026 werden keine Beiträge mehr angenommen. Einsendeschluss war der 15. September 2026.</p>
+              </div>
+              <p><span class="email-cta is-closed" aria-disabled="true">✉ <span class="email-address">Medienpreis@zwischenwelten.berlin</span> <span class="closed-chip">Geschlossen</span></span></p>
+              <p>Für Rückfragen erreichen Sie uns über unsere <a href="/kontakt">Kontaktseite</a>.</p>
             </div>
           </div>
         </div>
