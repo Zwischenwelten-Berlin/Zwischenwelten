@@ -203,6 +203,18 @@
       "caption": null,
       "original_slug": "sembolik-secim-ikametgah-esasina-dayali-oy-hakki",
       "locked": false
+    },
+    "quasimodonun-gorev-vakti": {
+      "title": "Quasimodo’nun Görev Vakti",
+      "lang": "tr",
+      "date": "2026-10-06",
+      "author": "Hayko Bağdat",
+      "tag": null,
+      "highlight": null,
+      "alt": null,
+      "caption": null,
+      "original_slug": null,
+      "locked": false
     }
   }
 }

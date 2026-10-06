@@ -1,0 +1,25 @@
+# Quasimodo’nun Görev Vakti
+
+Göç, insanlık varolduğundan beri devam eden, tarihin hiçbir aşamasında durmamış bir gerçeklik. İnsanoğlu, yerküre dediğimiz bu gezegende, üstelik insan eliyle çizilmiş sınırlara, duvarlara, engellere rağmen pek çok değişik vesilelerle kitlesel olarak yer değiştirip duruyor.
+
+Gelen gideni her zaman aratıyor. Gücü eline alan hemen bir duvar örüyor. Arkadan gelene de yer kalmadığını söylüyor. Victor Hugo’nun *Notre Dame de Paris* eseri, bu bitmeyen insanlık tiyatrosunun en eski sahnesidir. Televizyonlarda “Kültürümüz bozuluyor” diye bağıran fiyakalı figürlerin büyük dedesi, romanın meşhur **Yüzbaşı Phoebus**’udur. Üzerinde parıl parıl askeri zırh taşır. Ağzında devletin beka söylemleri vardır. Kafasının içi ise mülteci düşmanlığıyla doludur. Bugün sınır kapılarına jiletli tel çeken modern güçler neyse, o dönem Paris sokaklarında düzen koruyan Phoebus da tam olarak odur.
+
+**Esmeralda’nın Kaçak Dansı **
+
+Paris’in göbeğinde gencecik bir kadın yaşar, adı **Esmeralda**. Toplum ona Çingene der, yabancı der. Tek suçu sokakta dans edip ekmek parası kazanmaktır. Fakat erk sahiplerinin gözünde o bir “ulusal güvenlik sorunu” haline gelir. Çünkü pasaportu yoktur, vizesi yoktur, kayıt dışıdır. Bugün ABD’de **ICE (Göçmenlik ve Gümrük Muhafaza)** denilen modern avcıların sokak ortasında insan avlaması, aileleri birbirinden koparması tam da bu zihniyetin ürünüdür. ICE ajanlarının operasyonları ile Esmeralda’yı meydanda köşeye sıkıştırmaya çalışan askerlerin mantığı tamamen aynıdır. Sırf öteki doğduğu için, sırf sınırın diğer tarafından geldiği için bütün kentin günah keçisi ilan edilir.
+
+**Papaz Frollo: Hem Arzularım Hem Sınır Dışı Ederim**
+
+Kutsal bürokrasinin zirvesinde ise **Papaz Claude Frollo** durur. Frollo tam bir ibretlik vakadır. Gündüzleri katedral kürsüsünden “Ahlak elden gidiyor, bu yabancılar bizi yozlaştırıyor” diye vaazlar verir. Geceleri ise gizli gizli Esmeralda’nın peşinde koşar. İçten içe mülteciyi arzular. Onun enerjisini, emeğini sömürmek ister. Ancak iş resmiyete dökülünce “Vurun kafire” diye bağırmaktan geri durmaz. Bugün göçmenleri fabrikalarda sigortasız, yarı fiyatına kaçak çalıştırıp, akşamına “Bu yabancılar ülkemizi istila etti” diye oy toplayan siyasetçiler birer Frollo’dur. Kendi beceriksizliklerini ve ekonomik krizleri göçmenin sırtına yükleyip işin içinden sıyrılmak tam bir Frollo kurnazlığıdır.
+
+**Sınırın Ardındaki Kıyamet: Zombiler Geliyor**
+
+Egemenlerin en büyük marifeti, önce insanların ülkelerini savaşlarla, sömürgeyle, silahlarla istila edip yaşanmaz hale getirmektir. Sonra da o cehennemden canını kurtarmak için yola düşen çaresiz insanları birer “zombi” gibi göstermektir. Hollywood filmlerindeki gibi, kapılarına dayanan mültecileri bilinci olmayan, sadece yok etmeye gelen, steril dünyalarını kirletecek asalak bir kitle olarak kurgularlar. Romanın Paris halkı da Esmeralda’yı ve onun insanlarını kenti ele geçirmeye gelen uğursuz birer yaratık gibi görüyordu. Oysa kapıdaki insanlar zombi değil; egemenlerin kendi yaktığı yangından kaçan, sadece nefes almak isteyen insanlardır. Zombi olanlar göçmenler değil, tel örgülerin arkasından acıyla bağıran insanlara bakıp hiçbir şey hissetmeyen o buz gibi muktedir vicdanlarıdır.
+
+**Quasimodo ve Kutsal Sığınma Hakkı**
+
+Bu hoyratlığın içinde bir de **Quasimodo** vardır. Toplumun “ucube” dediği, çirkin bulup kulelere hapsettiği o kambur, sağır çancı. Quasimodo’nun o yamuk yumuk bedeni, aslında yüzyıllardır göç yollarında hırpalanmış insanlığın ta kendisidir. Fakat o çirkin bedenin içinde öyle bir adalet duygusu bulunur ki, Phoebus’un ordusuna da Frollo’nun cübbesine de tek başına meydan okur. Esmeralda’yı zalimlerin elinden kapıp katedralin tepesine çıkardığında “Sığınak!” (Asylum) diye haykırır. İşte o an, insanlık tarihinin en güzel mülteci hukuku dersidir. “Sizin sınırlarınız varsa, bizim de vicdanımız var” der. Quasimodo ile Esmeralda’nın o saf aşkı, sistemin dışına itilmiş iki “kaçak” ruhun muktedirlere attığı en güzel tokattır.
+
+**Avrupa'nın Yeni Frollo'ları: AfD ve Modern Duvarlar**
+
+Bugün Victor Hugo yaşasaydı, bu romanı yazmak için Paris’e değil, doğrudan Almanya’ya ve Avrupa Parlamentosu’na bakardı. Karşımızda modern Frollo’lar ve Phoebus’lar duruyor. Almanya’da **AfD (Alternative für Deutschland)** gibi aşırı sağcı partiler, tam da o eski Paris halkı gibi histeriyle bağırıyor: “Kültürümüzü bozuyorlar, hepsini sınır dışı edelim!” Avrupa’nın ortasında mülteci avına çıkan, sınırları kapatan, insanları tel örgülere mahkum eden bu akıl, esmer mülteci çocukları gördüğünde haç çıkaran modern kilise cübbesidir. Ancak unuttukları bir şey var. Dekor değişir, kostümler yenilenir ama bu göçmen tiyatrosunun senaryosu hiç değişmez. Tarih o parlak zırhlı ırkçıları ya da kibirli siyasetçileri değil; katedralin kulesinde adaleti, aşkı ve sığınma hakkını haykıran o çirkin zangoçu yazar.
