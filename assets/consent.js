@@ -16,7 +16,7 @@
 (function () {
   "use strict";
 
-  var CONSENT_VERSION = 1;
+  var CONSENT_VERSION = 2; // 2: Google Tag Manager / Analytics in „Statistik“
   var STORAGE_KEY = "zw-consent";
   var MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 12 Monate
 
@@ -37,7 +37,7 @@
       id: "statistics",
       label: "Statistik",
       locked: false,
-      desc: "Dienste zur anonymisierten Reichweitenmessung. Derzeit setzen wir keine Statistik-Dienste ein; diese Kategorie gilt für künftige Erweiterungen."
+      desc: "Google Tag Manager und Google Analytics helfen uns zu verstehen, wie die Website genutzt wird. Dabei werden Cookies gesetzt und Nutzungsdaten (z. B. Ihre IP-Adresse) an Google übertragen, auch in die USA. Werbefunktionen sind deaktiviert."
     }
   ];
 
@@ -139,6 +139,20 @@
     }
   }
 
+  // Google-Analytics-Cookies (_ga, _ga_*, _gid, _gat*) beim Widerruf entfernen
+  function removeAnalyticsCookies() {
+    var host = location.hostname;
+    var domains = ["", host, "." + host, "." + host.split(".").slice(-2).join(".")];
+    document.cookie.split(";").forEach(function (c) {
+      var name = c.split("=")[0].trim();
+      if (!/^(_ga|_gid|_gat)/.test(name)) return;
+      domains.forEach(function (d) {
+        document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/" +
+          (d ? "; domain=" + d : "");
+      });
+    });
+  }
+
   function decide(choices) {
     var before = readConsent();
     var after = writeConsent(choices);
@@ -146,6 +160,7 @@
     // Wurde eine zuvor erteilte Einwilligung entzogen, Seite neu laden,
     // damit bereits geladene Inhalte entfernt werden.
     if (before && ((before.media && !after.media) || (before.statistics && !after.statistics))) {
+      if (before.statistics && !after.statistics) removeAnalyticsCookies();
       location.reload();
       return;
     }
@@ -174,7 +189,8 @@
     b.innerHTML =
       '<h2 id="zw-consent-title">Ihre Privatsphäre</h2>' +
       '<p>Wir verwenden neben technisch notwendigen Speicherfunktionen optional externe Medien ' +
-      '(z. B. YouTube). Diese Inhalte werden erst geladen, wenn Sie einwilligen. ' +
+      '(z. B. YouTube) sowie Statistik-Dienste (Google Tag Manager, Google Analytics). ' +
+      'Diese werden erst geladen, wenn Sie einwilligen. ' +
       'Ihre Auswahl können Sie jederzeit über „Cookie-Einstellungen“ im Fußbereich ändern. ' +
       'Mehr dazu in unserer <a href="/datenschutz">Datenschutzerklärung</a>.</p>' +
       '<div class="zw-consent-actions">' +
