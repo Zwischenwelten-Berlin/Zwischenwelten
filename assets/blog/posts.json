@@ -311,6 +311,18 @@
       "caption": null,
       "original_slug": "was-vom-oktober-bleibt",
       "locked": false
+    },
+    "beyin-gocu": {
+      "title": "Beyin Göçü",
+      "lang": "tr",
+      "date": "2026-10-19",
+      "author": "Hayko Bağdat",
+      "tag": null,
+      "highlight": null,
+      "alt": "Beyin Göçü",
+      "caption": null,
+      "original_slug": null,
+      "locked": false
     }
   }
 }
