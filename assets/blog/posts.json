@@ -323,6 +323,18 @@
       "caption": null,
       "original_slug": null,
       "locked": false
+    },
+    "beyin-gocu-de": {
+      "title": "Braindrain",
+      "lang": "de",
+      "date": "2026-10-26",
+      "author": "Hayko Bağdat",
+      "tag": null,
+      "highlight": null,
+      "alt": "Braindrain",
+      "caption": null,
+      "original_slug": "beyin-gocu",
+      "locked": false
     }
   }
 }

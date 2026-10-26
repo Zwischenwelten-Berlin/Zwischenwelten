@@ -16,8 +16,18 @@
   <url><loc>https://zwischenwelten.berlin/mitmachen</loc></url>
   <url><loc>https://zwischenwelten.berlin/ueber-uns</loc></url>
   <url>
+    <loc>https://zwischenwelten.berlin/aktuelles/beyin-gocu-de</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://zwischenwelten.berlin/aktuelles/beyin-gocu-de"/>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://zwischenwelten.berlin/aktuelles/beyin-gocu"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://zwischenwelten.berlin/aktuelles/beyin-gocu"/>
+  </url>
+  <url>
     <loc>https://zwischenwelten.berlin/aktuelles/beyin-gocu</loc>
     <lastmod>2026-10-19</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://zwischenwelten.berlin/aktuelles/beyin-gocu-de"/>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://zwischenwelten.berlin/aktuelles/beyin-gocu"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://zwischenwelten.berlin/aktuelles/beyin-gocu"/>
   </url>
   <url>
     <loc>https://zwischenwelten.berlin/aktuelles/was-vom-oktober-bleibt-uk</loc>
