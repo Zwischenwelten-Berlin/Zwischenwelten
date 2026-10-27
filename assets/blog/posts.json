@@ -335,6 +335,18 @@
       "caption": null,
       "original_slug": "beyin-gocu",
       "locked": false
+    },
+    "es-fehlen-positive-geschichten": {
+      "title": "Es fehlen positive Geschichten",
+      "lang": "de",
+      "date": "2026-10-27",
+      "author": "Süleyman Bağ",
+      "tag": null,
+      "highlight": null,
+      "alt": "Interview_Dominique_Hensel",
+      "caption": null,
+      "original_slug": null,
+      "locked": false
     }
   }
 }
