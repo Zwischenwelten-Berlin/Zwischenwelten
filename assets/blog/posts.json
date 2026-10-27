@@ -347,6 +347,18 @@
       "caption": null,
       "original_slug": null,
       "locked": false
+    },
+    "es-fehlen-positive-geschichten-tr": {
+      "title": "Olumlu hikâyeler eksik",
+      "lang": "tr",
+      "date": "2026-10-27",
+      "author": "Süleyman Bağ",
+      "tag": null,
+      "highlight": null,
+      "alt": "Olumlu hikâyeler eksik",
+      "caption": null,
+      "original_slug": "es-fehlen-positive-geschichten",
+      "locked": false
     }
   }
 }

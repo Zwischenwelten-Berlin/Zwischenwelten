@@ -16,8 +16,18 @@
   <url><loc>https://zwischenwelten.berlin/mitmachen</loc></url>
   <url><loc>https://zwischenwelten.berlin/ueber-uns</loc></url>
   <url>
+    <loc>https://zwischenwelten.berlin/aktuelles/es-fehlen-positive-geschichten-tr</loc>
+    <lastmod>2026-10-27</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://zwischenwelten.berlin/aktuelles/es-fehlen-positive-geschichten"/>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://zwischenwelten.berlin/aktuelles/es-fehlen-positive-geschichten-tr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://zwischenwelten.berlin/aktuelles/es-fehlen-positive-geschichten"/>
+  </url>
+  <url>
     <loc>https://zwischenwelten.berlin/aktuelles/es-fehlen-positive-geschichten</loc>
     <lastmod>2026-10-27</lastmod>
+    <xhtml:link rel="alternate" hreflang="de" href="https://zwischenwelten.berlin/aktuelles/es-fehlen-positive-geschichten"/>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://zwischenwelten.berlin/aktuelles/es-fehlen-positive-geschichten-tr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://zwischenwelten.berlin/aktuelles/es-fehlen-positive-geschichten"/>
   </url>
   <url>
     <loc>https://zwischenwelten.berlin/aktuelles/beyin-gocu-de</loc>
