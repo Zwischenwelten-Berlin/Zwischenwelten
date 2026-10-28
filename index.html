@@ -158,8 +158,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       font-weight:500;
     }
 
-    /* Mediathek dropdown: opens on hover/focus; below 1100px the parent link
-       goes straight to /videos and the submenu stays hidden. */
+    /* Mediathek dropdown: opens on click/tap (assets/nav.js sets .is-open) and,
+       on devices with a real pointer, on hover/focus as well. */
     .site-shell > .top-nav{ z-index:10; }
     .nav-sub{ position:relative; }
     .nav-sub > a::after{
@@ -195,8 +195,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       top:-14px;
       height:14px;
     }
-    .nav-sub:hover .nav-sub-menu,
-    .nav-sub:focus-within .nav-sub-menu{ display:block; }
+    .nav-sub.is-open .nav-sub-menu{ display:block; }
+    @media (hover: hover){
+      .nav-sub:hover .nav-sub-menu,
+      .nav-sub:has(:focus-visible) .nav-sub-menu{ display:block; }
+    }
     .nav-sub-menu a{
       display:block;
       padding:9px 12px;
@@ -214,7 +217,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       cursor:default;
     }
     @media (max-width: 1100px){
-      .nav-sub-menu{ display:none !important; }
+      .nav-sub-menu{ left:0; transform:none; }
     }
 
     .nav-actions{
@@ -2161,7 +2164,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <ul class="nav-links">
             <li><a href="/aktuelles">Aktuelles</a></li>
             <li class="nav-sub">
-              <a href="/videos">Mediathek</a>
+              <a href="/videos" class="nav-sub-toggle">Mediathek</a>
               <ul class="nav-sub-menu">
                 <li><a href="/videos">Videos</a></li>
                 <li><span class="nav-sub-soon" title="Podcasts erscheinen bald">Podcasts (bald)</span></li>
@@ -2574,5 +2577,6 @@ Verständigung über Glaubensgrenzen hinweg nicht nur möglich, sondern notwendi
     })();
   </script>
   <script src="assets/consent.js" defer></script>
+  <script src="/assets/nav.js" defer></script>
 </body>
 </html>
