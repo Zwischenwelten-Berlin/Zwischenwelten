@@ -230,6 +230,14 @@
   /* a failed delete appends its git transcript here — keep the line breaks */
   #list-error{ white-space:pre-wrap; }
 
+  /* ---------- Mediathek ---------- */
+  .media-sync + .media-sync{ margin-top:16px; }
+  .media-sync h2{ margin:0 0 6px; }
+  .media-sync p.text-soft{ margin:0 0 16px; }
+  .media-sync .banner{ margin:16px 0 0; white-space:pre-wrap; }
+  .media-sync .banner a{ color:inherit; font-weight:700; }
+  .media-sync details{ margin-top:10px; }
+
   /* ---------- drop zones ---------- */
   .dropzones{
     display:grid;
@@ -552,6 +560,7 @@
       <button type="button" class="nav-tab" data-nav="neu">Neuer Beitrag</button>
       <button type="button" class="nav-tab" data-nav="beitraege">Beiträge</button>
       <button type="button" class="nav-tab" data-nav="autoren">Autor:innen</button>
+      <button type="button" class="nav-tab" data-nav="mediathek">Mediathek</button>
     </nav>
   </div>
 </header>
@@ -813,6 +822,24 @@
     </div>
   </section>
 
+  <!-- SECTION »MEDIATHEK« -->
+  <section id="screen-media" hidden>
+    <div class="card media-sync" data-media="videos">
+      <h2 class="subhead">Videos</h2>
+      <p class="text-soft">Holt neue Videos vom YouTube-Kanal und aktualisiert die Seite /videos. Erst klicken, wenn das Video auf YouTube öffentlich ist.</p>
+      <button type="button" class="btn btn-primary" data-sync>Videos synchronisieren</button>
+      <div class="banner" data-result hidden></div>
+      <details data-log hidden><summary>Git-Ausgabe</summary><pre></pre></details>
+    </div>
+    <div class="card media-sync" data-media="podcasts">
+      <h2 class="subhead">Podcasts</h2>
+      <p class="text-soft">Liest den Podcast-Feed und aktualisiert die Seite /podcasts. Erst klicken, wenn die Folge beim Podcast-Hoster veröffentlicht ist.</p>
+      <button type="button" class="btn btn-primary" data-sync>Podcasts synchronisieren</button>
+      <div class="banner" data-result hidden></div>
+      <details data-log hidden><summary>Git-Ausgabe</summary><pre></pre></details>
+    </div>
+  </section>
+
   <!-- SECTION »AUTOR:INNEN« -->
   <section id="screen-authors" hidden>
     <div class="card">
@@ -909,22 +936,25 @@ const MODE_TITLES = {
 };
 
 // ---- sections & navigation -------------------------------------------------
-// Three sections behind the top nav: "neu" (the new-post wizard), "beitraege"
+// Four sections behind the top nav: "neu" (the new-post wizard), "beitraege"
 // (post list plus the edit/translate flows, which reuse the wizard screens),
-// "autoren". Each remembers its current screen so switching tabs never
+// "autoren" and "mediathek" (video/podcast sync). Each remembers its current screen so switching tabs never
 // destroys work in progress; the wizard screens map to "neu" or "beitraege"
 // depending on the mode that put them on screen.
-const SECTION_NAMES = ["neu", "beitraege", "autoren"];
-const sectionScreens = { neu: "screen-drop", beitraege: "screen-list", autoren: "screen-authors" };
+const SECTION_NAMES = ["neu", "beitraege", "autoren", "mediathek"];
+const sectionScreens = { neu: "screen-drop", beitraege: "screen-list", autoren: "screen-authors",
+                         mediathek: "screen-media" };
 let currentSection = "neu";
 
 function sectionForScreen(id) {
   if (STEP_ORDER.includes(id)) return state.mode === "new" ? "neu" : "beitraege";
+  if (id === "screen-media") return "mediathek";
   return id === "screen-authors" ? "autoren" : "beitraege";
 }
 
 function navigate(section) {
   if (section === "autoren") { show("screen-authors"); loadAuthors(); return; }
+  if (section === "mediathek") { show("screen-media"); return; }
   if (section === "beitraege") {
     const id = sectionScreens.beitraege;
     // Resume a running edit/translate flow; a finished one (result screen)
@@ -966,6 +996,8 @@ function show(id) {
     h1.textContent = "Beiträge";
   } else if (id === "screen-authors") {
     h1.textContent = "Autor:innen";
+  } else if (id === "screen-media") {
+    h1.textContent = "Mediathek";
   } else if (isWizard) {
     h1.textContent = (state.mode === "translate" && state.translateInit)
       ? `Übersetzung: ${state.translateInit.original.title}`
@@ -2071,6 +2103,64 @@ document.getElementById("btn-back-to-form").addEventListener("click", () => {
 });
 document.getElementById("btn-publish").addEventListener("click", doPublish);
 document.getElementById("btn-retry-push").addEventListener("click", doRetryPush);
+
+// ---- Mediathek: sync buttons ---------------------------------------------
+// One card per kind (videos/podcasts). A failed push turns the button into
+// "Erneut versuchen", which reuses /api/retry-push like the post result screen.
+function renderMediaResult(card, r) {
+  const box = card.querySelector("[data-result]");
+  const log = card.querySelector("[data-log]");
+  const btn = card.querySelector("[data-sync]");
+  box.hidden = false;
+  box.className = "banner " + (r.ok ? "banner-success" : "banner-error");
+  box.textContent = "";
+  if (r.ok) {
+    const added = r.added || [];
+    if (r.retried) {
+      box.textContent = "Jetzt hochgeladen. ";
+    } else if (added.length) {
+      box.textContent = (added.length === 1 ? "Neu: " : `${added.length} neu: `) + added.join(", ") + ". ";
+    } else if (r.commit) {
+      box.textContent = "Keine neuen Inhalte, die Seite wurde aber aktualisiert. ";
+    } else {
+      box.textContent = "Alles aktuell — es gibt nichts Neues. ";
+    }
+    if (r.commit) {
+      box.append("Live in 1–2 Minuten: ");
+      const a = document.createElement("a");
+      a.href = r.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = r.url;
+      box.append(a);
+    }
+    if (r.app_updated) box.append("\n\nDie Publish-App wurde inzwischen aktualisiert — bitte neu starten.");
+  } else {
+    box.textContent = r.error || "Unbekannter Fehler.";
+  }
+  log.hidden = !r.git_output;
+  log.querySelector("pre").textContent = r.git_output || "";
+  btn.dataset.retry = (!r.ok && r.stage === "push") ? "1" : "";
+  btn.textContent = btn.dataset.retry ? "Erneut versuchen (pull --rebase + push)" : btn.dataset.label;
+}
+
+document.querySelectorAll(".media-sync").forEach((card) => {
+  const btn = card.querySelector("[data-sync]");
+  btn.dataset.label = btn.textContent;
+  btn.addEventListener("click", async () => {
+    if (btn.disabled) return;
+    const retry = !!btn.dataset.retry;
+    btn.disabled = true;
+    btn.textContent = retry ? "Wird erneut versucht …" : "Wird synchronisiert …";
+    try {
+      const r = await api(retry ? "/api/retry-push" : `/api/sync-${card.dataset.media}`);
+      if (retry && r.ok) Object.assign(r, { retried: true, commit: "retry",
+                                            url: `https://zwischenwelten.berlin/${card.dataset.media}` });
+      renderMediaResult(card, r);
+    } catch (e) {
+      renderMediaResult(card, { ok: false, error: "Netzwerkfehler: " + (e && e.message ? e.message : e) });
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
 document.getElementById("f-author").addEventListener("input", scheduleAuthorCheck);
 document.getElementById("f-author").addEventListener("blur", renderAuthorStatus);
 document.getElementById("f-lang").addEventListener("change", () => {

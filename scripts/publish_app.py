@@ -30,6 +30,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import publish_post
 from publish_post import LANGS, PublishError, ROOT, build_post
 from manuscript_import import ManuscriptError, detect_lang, load_manuscript
+import sync_podcasts
+import sync_videos
 
 PORT = 8765
 APP_HTML = os.path.join(os.path.dirname(os.path.abspath(__file__)), "publish_app.html")
@@ -388,6 +390,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.api_html_to_md(body)
             elif self.path == "/api/delete-post":
                 self.api_delete_post(body)
+            elif self.path == "/api/sync-videos":
+                self.api_sync_media("videos")
+            elif self.path == "/api/sync-podcasts":
+                self.api_sync_media("podcasts")
             else:
                 self.send_error(404)
         except (ManuscriptError, PublishError) as e:
@@ -782,6 +788,55 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         self.send_json({"ok": True, "title": r["title"], "commit": msg,
                         "git_output": "\n\n".join(log)})
+
+    # Mediathek: pull first (like delete), so the sync runs on the newest
+    # videos.json/podcasts.json and a failed pull leaves everything untouched.
+    MEDIA_SYNC = {
+        "videos": (sync_videos, "Videos", "https://zwischenwelten.berlin/videos"),
+        "podcasts": (sync_podcasts, "Podcasts", "https://zwischenwelten.berlin/podcasts"),
+    }
+
+    def api_sync_media(self, kind):
+        module, label, url = self.MEDIA_SYNC[kind]
+        log = []
+        if not _pull(log):
+            git_output, warn = split_pull_warning("\n\n".join(log))
+            self.send_json({"ok": False, "stage": "pull",
+                            "error": "git pull --rebase ist fehlgeschlagen — es wurde nichts "
+                                     "synchronisiert." + warn,
+                            "git_output": git_output})
+            return
+
+        try:
+            r = module.sync()
+        except sync_videos.SyncError as e:
+            self.send_json({"ok": False, "stage": "sync", "error": str(e),
+                            "git_output": "\n\n".join(log)})
+            return
+
+        result = {"ok": True, "added": r["added"], "count": r["count"], "url": url,
+                  "app_updated": APP_UPDATE["pending"]}
+        if not r["files"]:
+            self.send_json({**result, "commit": "", "git_output": "\n\n".join(log)})
+            return
+
+        msg = f"content: sync {kind}"
+        if r["added"]:
+            msg += " (+ " + ", ".join(r["added"]) + ")"
+        stage = _add_commit_push(r["files"], msg, log)
+        if stage in ("add", "commit"):
+            self.send_json({"ok": False, "stage": stage,
+                            "error": f"git {stage} ist fehlgeschlagen. Die {label} sind lokal bereits "
+                                     "aktualisiert — bitte im Terminal prüfen und dort committen und pushen.",
+                            "git_output": "\n\n".join(log), "files": r["files"]})
+            return
+        if stage == "push":
+            self.send_json({"ok": False, "stage": "push",
+                            "error": f"git push wurde abgelehnt. Die {label} sind lokal committet — "
+                                     "»Erneut versuchen« führt pull --rebase + push aus.",
+                            "git_output": "\n\n".join(log)})
+            return
+        self.send_json({**result, "commit": msg, "git_output": "\n\n".join(log)})
 
     def api_retry_push(self):
         log = []
