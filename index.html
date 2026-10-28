@@ -204,6 +204,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       white-space:nowrap;
     }
     .nav-sub-menu a:hover{ background:rgba(18,63,122,0.06); color:var(--text); }
+    .nav-sub-menu .nav-sub-soon{
+      display:block;
+      padding:9px 12px;
+      font-size:14px;
+      font-weight:500;
+      color:var(--muted);
+      white-space:nowrap;
+      cursor:default;
+    }
     @media (max-width: 1100px){
       .nav-sub-menu{ display:none !important; }
     }
@@ -2155,6 +2164,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               <a href="/videos">Mediathek</a>
               <ul class="nav-sub-menu">
                 <li><a href="/videos">Videos</a></li>
+                <li><span class="nav-sub-soon" title="Podcasts erscheinen bald">Podcasts (bald)</span></li>
               </ul>
             </li>
             <li><a href="/ueber-uns">Über uns</a></li>

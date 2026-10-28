@@ -179,6 +179,15 @@ img{ max-width:100%; display:block; }
   white-space:nowrap;
 }
 .nav-sub-menu a:hover{ background:rgba(18,63,122,0.06); color:var(--text); }
+.nav-sub-menu .nav-sub-soon{
+  display:block;
+  padding:9px 12px;
+  font-size:14px;
+  font-weight:500;
+  color:var(--muted);
+  white-space:nowrap;
+  cursor:default;
+}
 @media (max-width: 1100px){
   .nav-sub-menu{ display:none !important; }
 }
