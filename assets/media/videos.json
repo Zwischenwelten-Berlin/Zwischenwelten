@@ -1,0 +1,67 @@
+{
+  "channel": "https://www.youtube.com/@Zwischenweltenberlin",
+  "channel_id": "UC38FS5sHgT1wk6kQducQIjg",
+  "featured": "T50Ep0B75wk",
+  "videos": [
+    {
+      "id": "GNMWiR6fZes",
+      "kind": "short",
+      "title": "Mehr darüber auf unserer Website!",
+      "date": "2026-08-12",
+      "duration": 38,
+      "lang": "de",
+      "kicker": "Short",
+      "description": ""
+    },
+    {
+      "id": "DZj5hnntHNk",
+      "kind": "short",
+      "title": "Schickt uns gerne eure Beiträge!",
+      "date": "2026-07-30",
+      "duration": 37,
+      "lang": "de",
+      "kicker": "Short",
+      "description": ""
+    },
+    {
+      "id": "9NjMJKKekcg",
+      "kind": "video",
+      "title": "Zwischenwelten Berlin – Medienpreis 2026",
+      "date": "2026-07-26",
+      "duration": 51,
+      "lang": "de",
+      "kicker": "Medienpreis",
+      "description": "Der Zwischenwelten Medienpreis 2026 in einer Minute: worum es geht und wie du mitmachen kannst."
+    },
+    {
+      "id": "1fvlYqL5SLA",
+      "kind": "video",
+      "title": "Zwischenwelten Medienprojekt",
+      "date": "2026-07-19",
+      "duration": 641,
+      "lang": "de",
+      "kicker": "Projekt",
+      "description": "Berlin ist mehrsprachig und international – doch diese Realität bleibt in den Medien oft unsichtbar oder wird auf Krisen reduziert. Das Projekt Zwischenwelten will das ändern und bringt neue Perspektiven sowie vielfältige Berliner Stimmen in den Journalismus."
+    },
+    {
+      "id": "yzbi8As-Kh4",
+      "kind": "video",
+      "title": "Zwischenwelten Berlin",
+      "date": "2026-07-16",
+      "duration": 57,
+      "lang": "de",
+      "kicker": "Projekt",
+      "description": "Eine Minute ZWISCHENWELTEN: das Projekt im Kurzporträt."
+    },
+    {
+      "id": "T50Ep0B75wk",
+      "kind": "video",
+      "title": "Wer wir sind – und wie wir arbeiten",
+      "date": "2026-03-18",
+      "duration": 325,
+      "lang": "de",
+      "kicker": "Projektfilm",
+      "description": "Menschen, Geschichten, Perspektiven: Unser Projektfilm gibt einen Einblick in das, was ZWISCHENWELTEN antreibt. Er zeigt das Team, die Partner und vor allem die Bürgerredaktion des Brunnenmagazins – Menschen aus dem Kiez, die ihre eigenen Stimmen in den Journalismus einbringen."
+    }
+  ]
+}

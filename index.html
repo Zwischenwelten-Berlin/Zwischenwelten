@@ -158,6 +158,56 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       font-weight:500;
     }
 
+    /* Mediathek dropdown: opens on hover/focus; below 1100px the parent link
+       goes straight to /videos and the submenu stays hidden. */
+    .site-shell > .top-nav{ z-index:10; }
+    .nav-sub{ position:relative; }
+    .nav-sub > a::after{
+      content:"";
+      display:inline-block;
+      width:6px;
+      height:6px;
+      margin:0 0 3px 7px;
+      border-right:1.5px solid currentColor;
+      border-bottom:1.5px solid currentColor;
+      transform:rotate(45deg);
+    }
+    .nav-sub-menu{
+      display:none;
+      position:absolute;
+      top:calc(100% + 12px);
+      left:50%;
+      transform:translateX(-50%);
+      min-width:170px;
+      margin:0;
+      padding:8px;
+      list-style:none;
+      background:var(--white);
+      border:1px solid var(--line-strong);
+      border-radius:14px;
+      box-shadow:0 18px 40px rgba(18,63,122,0.12);
+    }
+    .nav-sub-menu::before{
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      top:-14px;
+      height:14px;
+    }
+    .nav-sub:hover .nav-sub-menu,
+    .nav-sub:focus-within .nav-sub-menu{ display:block; }
+    .nav-sub-menu a{
+      display:block;
+      padding:9px 12px;
+      border-radius:9px;
+      white-space:nowrap;
+    }
+    .nav-sub-menu a:hover{ background:rgba(18,63,122,0.06); color:var(--text); }
+    @media (max-width: 1100px){
+      .nav-sub-menu{ display:none !important; }
+    }
+
     .nav-actions{
       display:flex;
       align-items:center;
@@ -404,6 +454,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       font-size:14px;
       line-height:1.55;
       color:var(--muted);
+    }
+    .films-all{
+      font-size:14px;
+      font-weight:600;
+      color:var(--text);
+      padding-bottom:2px;
+      border-bottom:1px solid var(--text);
+    }
+    .films-all:hover{
+      border-bottom-color:var(--accent);
     }
     .films-grid{
       display:grid;
@@ -2091,6 +2151,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <nav aria-label="Hauptnavigation">
           <ul class="nav-links">
             <li><a href="/aktuelles">Aktuelles</a></li>
+            <li class="nav-sub">
+              <a href="/videos">Mediathek</a>
+              <ul class="nav-sub-menu">
+                <li><a href="/videos">Videos</a></li>
+              </ul>
+            </li>
             <li><a href="/ueber-uns">Über uns</a></li>
             <li><a href="/journalistennetzwerk">Journalistennetzwerk</a></li>
             <li><a href="/buergerredaktion">Bürgerredaktion</a></li>
@@ -2197,7 +2263,8 @@ deren Perspektiven bisher kaum vorkommen.</p>
           <div class="films-head">
             <div>
               <p class="section-eyebrow">Projektfilm</p>
-
+            </div>
+            <a class="films-all" href="/videos">Alle Videos →</a>
           </div>
 
           <div class="films-grid">

@@ -133,6 +133,56 @@ img{ max-width:100%; display:block; }
   font-weight:700;
 }
 
+/* Mediathek dropdown: opens on hover/focus; below 1100px the parent link
+   goes straight to /videos and the submenu stays hidden. */
+.site-shell > .top-nav{ z-index:10; }
+.nav-sub{ position:relative; }
+.nav-sub > a::after{
+  content:"";
+  display:inline-block;
+  width:6px;
+  height:6px;
+  margin:0 0 3px 7px;
+  border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;
+  transform:rotate(45deg);
+}
+.nav-sub-menu{
+  display:none;
+  position:absolute;
+  top:calc(100% + 12px);
+  left:50%;
+  transform:translateX(-50%);
+  min-width:170px;
+  margin:0;
+  padding:8px;
+  list-style:none;
+  background:var(--white);
+  border:1px solid var(--line-strong);
+  border-radius:14px;
+  box-shadow:0 18px 40px rgba(18,63,122,0.12);
+}
+.nav-sub-menu::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:-14px;
+  height:14px;
+}
+.nav-sub:hover .nav-sub-menu,
+.nav-sub:focus-within .nav-sub-menu{ display:block; }
+.nav-sub-menu a{
+  display:block;
+  padding:9px 12px;
+  border-radius:9px;
+  white-space:nowrap;
+}
+.nav-sub-menu a:hover{ background:rgba(18,63,122,0.06); color:var(--text); }
+@media (max-width: 1100px){
+  .nav-sub-menu{ display:none !important; }
+}
+
 .nav-actions{
   display:flex;
   align-items:center;
