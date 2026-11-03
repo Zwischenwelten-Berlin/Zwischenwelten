@@ -172,9 +172,11 @@
     bar.hidden = false;
     document.body.classList.add("has-player");
     if ("mediaSession" in navigator && window.MediaMetadata) {
+      var cover = ep.getAttribute("data-cover");
       navigator.mediaSession.metadata = new MediaMetadata({
         title: ep.getAttribute("data-title"),
-        artist: bar.getAttribute("data-show") || "ZWISCHENWELTEN"
+        artist: bar.getAttribute("data-show") || "ZWISCHENWELTEN",
+        artwork: cover ? [{ src: cover, sizes: "600x600", type: "image/jpeg" }] : []
       });
     }
     render();

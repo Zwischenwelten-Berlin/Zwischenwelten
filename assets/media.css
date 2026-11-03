@@ -338,6 +338,40 @@
 .episode.is-playing .episode-play .icon-play{ display:none; }
 .episode.is-playing .episode-play .icon-pause{ display:block; }
 .episode-play .icon-play{ margin-left:3px; }
+
+/* Episode cover as the play button, round play icon on top */
+.episode-play.has-cover{
+  position:relative;
+  width:104px;
+  height:104px;
+  padding:0;
+  border-radius:14px;
+  overflow:hidden;
+  background:var(--line-strong);
+}
+.episode.is-featured .episode-play.has-cover{ width:clamp(140px, 22vw, 220px); height:auto; aspect-ratio:1; border-radius:20px; }
+.episode-play.has-cover:hover{ background:var(--line-strong); transform:none; }
+.episode-cover{ width:100%; height:100%; object-fit:cover; display:block; transition:transform .3s ease; }
+.episode-play.has-cover:hover .episode-cover{ transform:scale(1.04); }
+.episode-play-icon{
+  position:absolute;
+  right:8px;
+  bottom:8px;
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:var(--accent);
+  color:var(--text);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 4px 14px rgba(18,63,122,0.3);
+  transition:background .2s ease, transform .2s ease;
+}
+.episode.is-featured .episode-play-icon{ width:56px; height:56px; right:12px; bottom:12px; }
+.episode-play.has-cover:hover .episode-play-icon{ background:var(--accent-dark); transform:scale(1.06); }
+[dir="rtl"] .episode-play-icon{ right:auto; left:8px; }
+[dir="rtl"] .episode.is-featured .episode-play-icon{ left:12px; }
 [dir="rtl"] .episode-play .icon-play{ margin-left:0; margin-right:3px; }
 
 .episode-meta{
@@ -457,6 +491,13 @@ body.has-player .footer{ padding-bottom:120px; }
   .podcast-hero{ grid-template-columns:1fr; }
   .episode{ grid-template-columns:auto 1fr; padding:16px; gap:14px; }
   .episode-duration{ grid-column:2; }
+  .episode-play.has-cover{ width:76px; height:76px; border-radius:12px; }
+  .episode:has(.has-cover){ align-items:start; }
+  .episode.is-featured:has(.has-cover){ grid-template-columns:1fr; }
+  .episode.is-featured .episode-play.has-cover{ width:min(100%, 240px); }
+  .episode-play-icon{ width:32px; height:32px; right:6px; bottom:6px; }
+  .episode-play-icon svg{ width:16px; height:16px; }
+  .episode.is-featured .episode-play-icon{ width:40px; height:40px; right:8px; bottom:8px; }
   .player-bar{ grid-template-columns:auto minmax(0, 1fr); padding:10px 12px; bottom:8px; }
   .player-rate{ grid-column:2; justify-self:end; }
   .player-controls .skip{ display:none; }

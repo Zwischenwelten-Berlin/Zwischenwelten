@@ -56,6 +56,7 @@ def pod_site(tmp_path, monkeypatch):
     monkeypatch.setattr(sync_podcasts, "ROOT", str(tmp_path))
     monkeypatch.setattr(sync_podcasts, "DATA", str(tmp_path / "assets" / "media" / "podcasts.json"))
     monkeypatch.setattr(sync_podcasts, "PAGE", str(tmp_path / "podcasts.html"))
+    monkeypatch.setattr(sync_podcasts, "COVERS", str(tmp_path / "assets" / "podcasts" / "covers"))
     return tmp_path
 
 
@@ -114,6 +115,55 @@ def test_podcast_resync_reports_changed_and_removed_episodes(pod_site):
     page = (pod_site / "podcasts.html").read_text(encoding="utf-8")
     assert "Wem gehört Berlin? (neu)" in page and "ep1.mp3" not in page
     assert sync_podcasts.sync()["updated"] == []
+
+
+def _jpeg(path, color, size=900):
+    from PIL import Image
+    Image.new("RGB", (size, size), color).save(path, "JPEG")
+    return path.as_uri()
+
+
+def test_podcast_sync_saves_covers_and_follows_changes(pod_site):
+    feed = pod_site / "feed.xml"
+    ep_img = _jpeg(pod_site / "ep2.jpg", "orange")
+    show_img = _jpeg(pod_site / "show.jpg", "navy")
+    xml = feed.read_text(encoding="utf-8")
+    xml = xml.replace("<language>de-de</language>",
+                      f'<language>de-de</language>\n  <itunes:image href="{show_img}"/>')
+    xml = xml.replace("<guid>ep-2</guid>", f'<guid>ep-2</guid>\n    <itunes:image href="{ep_img}"/>')
+    feed.write_text(xml, encoding="utf-8")
+
+    r = sync_podcasts.sync()
+    covers = sorted(p for p in r["files"] if p.startswith("assets/podcasts/covers/"))
+    assert len(covers) == 2  # own cover for ep-2, the show's for ep-1
+    from PIL import Image
+    with Image.open(pod_site / covers[0]) as im:
+        assert im.width == sync_podcasts.COVER_W
+    page = (pod_site / "podcasts.html").read_text(encoding="utf-8")
+    assert page.count('class="episode-play has-cover"') == 2
+    assert 'data-cover="/assets/podcasts/covers/' in page
+
+    assert sync_podcasts.sync()["files"] == []  # unchanged covers are not rewritten
+
+    _jpeg(pod_site / "ep2.jpg", "green")
+    r = sync_podcasts.sync()
+    assert r["updated"] == ["Wem gehört Berlin?"] and len(r["files"]) == 1
+
+
+def test_podcast_sync_deletes_cover_of_removed_episode(pod_site):
+    feed = pod_site / "feed.xml"
+    img = _jpeg(pod_site / "show.jpg", "navy")
+    xml = feed.read_text(encoding="utf-8").replace(
+        "<language>de-de</language>", f'<language>de-de</language>\n  <itunes:image href="{img}"/>')
+    feed.write_text(xml, encoding="utf-8")
+    sync_podcasts.sync()
+    gone = sync_podcasts.cover_path({"guid": "ep-1"})
+    assert os.path.exists(gone)
+    start = xml.index("<item>\n    <title>ماذا")
+    feed.write_text(xml[:start] + xml[xml.index("</item>", start) + len("</item>"):], encoding="utf-8")
+    r = sync_podcasts.sync()
+    assert not os.path.exists(gone)
+    assert os.path.relpath(gone, pod_site) in r["files"]
 
 
 def test_podcast_sync_without_feed_refuses(pod_site):

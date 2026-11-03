@@ -6,14 +6,19 @@
 assets/media/podcasts.json is the source of truth: "feed" is the hoster's
 public RSS address, "links" the Spotify/Apple/YouTube pages for the
 subscribe buttons. Every feed item becomes an episode keyed by its <guid>;
-title, audio address, date and duration follow the feed on every sync, while
+title, audio address, date, duration and cover follow the feed on every sync, while
 "lang", "guests", "summary" and "hidden" are editorial and never overwritten.
+Episode covers (the episode's own itunes:image, else the show's) are saved
+small to assets/podcasts/covers/ so the page shows them without contacting
+Spotify before consent; a cover changed in the feed replaces the saved one.
 podcasts.html is rewritten only between its <!-- PODCASTS:… --> markers; the
 first real sync replaces the placeholder episodes and the preview notice.
 """
 import argparse
 import email.utils
+import hashlib
 import html
+import io
 import json
 import os
 import re
@@ -30,6 +35,8 @@ from sync_videos import SyncError, fmt_date
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "assets", "media", "podcasts.json")
 PAGE = os.path.join(ROOT, "podcasts.html")
+COVERS = os.path.join(ROOT, "assets", "podcasts", "covers")
+COVER_W = 600
 
 NS = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd",
       "content": "http://purl.org/rss/1.0/modules/content/"}
@@ -74,6 +81,8 @@ def parse_feed(xml_bytes):
     if channel is None:
         raise SyncError("Die Feed-Adresse liefert keinen Podcast-Feed (RSS).")
     feed_lang = (channel.findtext("language") or "")[:2].lower()
+    show_image = channel.find("itunes:image", NS)
+    show_image = show_image.get("href", "") if show_image is not None else ""
     episodes = []
     for item in channel.findall("item"):
         enclosure = item.find("enclosure")
@@ -88,6 +97,7 @@ def parse_feed(xml_bytes):
         desc = (item.findtext("itunes:summary", namespaces=NS)
                 or item.findtext("description") or "")
         number = item.findtext("itunes:episode", namespaces=NS)
+        image = item.find("itunes:image", NS)
         episodes.append({
             "guid": guid,
             "title": (item.findtext("itunes:title", namespaces=NS)
@@ -97,6 +107,7 @@ def parse_feed(xml_bytes):
             "duration": parse_duration(item.findtext("itunes:duration", namespaces=NS)),
             "src": enclosure.get("url"),
             "description": first_paragraph(plain_text(desc)),
+            "image": (image.get("href", "") if image is not None else "") or show_image,
         })
     episodes.sort(key=lambda e: e["date"], reverse=True)
     return episodes, feed_lang
@@ -129,6 +140,48 @@ def merge(existing, fresh, feed_lang):
     return merged, added, updated, removed
 
 
+def cover_path(ep):
+    return os.path.join(COVERS, hashlib.sha1(ep["guid"].encode()).hexdigest()[:12] + ".jpg")
+
+
+def _shrink(data):
+    try:
+        from PIL import Image
+    except ImportError:
+        return data
+    with Image.open(io.BytesIO(data)) as im:
+        im = im.convert("RGB")
+        if im.width > COVER_W:
+            im = im.resize((COVER_W, round(im.height * COVER_W / im.width)), Image.LANCZOS)
+        out = io.BytesIO()
+        im.save(out, "JPEG", quality=82, optimize=True, progressive=True)
+        return out.getvalue()
+
+
+def save_cover(ep):
+    """Download the episode's cover and save it if new or changed. Sets
+    ep["cover"] to the site path when a saved cover exists. Returns True
+    when the file was written. A failed download keeps the old cover."""
+    path = cover_path(ep)
+    written = False
+    if ep.get("image"):
+        try:
+            data = _shrink(fetch_feed(ep["image"]))
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            print(f"  ! Cover für »{ep['title']}« nicht geladen ({e})", file=sys.stderr)
+        else:
+            if _read(path) != data:
+                os.makedirs(COVERS, exist_ok=True)
+                with open(path, "wb") as fh:
+                    fh.write(data)
+                written = True
+    if os.path.exists(path):
+        ep["cover"] = "/" + os.path.relpath(path, ROOT).replace(os.sep, "/")
+    else:
+        ep.pop("cover", None)
+    return written
+
+
 # --------------------------------------------------------------------------
 # Rendering
 # --------------------------------------------------------------------------
@@ -143,6 +196,26 @@ def fmt_clock(sec):
     h, rest = divmod(sec, 3600)
     m, s = divmod(rest, 60)
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+def play_button(ep, full_title, icon, featured):
+    e = html.escape
+    label = f'aria-label="Abspielen: {e(full_title)}"'
+    if not ep.get("cover"):
+        return [f'  <button type="button" class="episode-play" {label}>',
+                f"    {PLAY.format(s=icon)}",
+                f"    {PAUSE.format(s=icon)}",
+                "  </button>"]
+    size = COVER_W
+    lazy = "" if featured else ' loading="lazy"'
+    return [f'  <button type="button" class="episode-play has-cover" {label}>',
+            f'    <img class="episode-cover" src="{e(ep["cover"])}" alt="" width="{size}" height="{size}"'
+            f'{lazy} decoding="async">',
+            '    <span class="episode-play-icon">',
+            f"      {PLAY.format(s=icon)}",
+            f"      {PAUSE.format(s=icon)}",
+            "    </span>",
+            "  </button>"]
 
 
 def episode(ep, featured=False):
@@ -160,11 +233,9 @@ def episode(ep, featured=False):
     out = [
         f'<li class="episode{" is-featured" if featured else ""}" data-lang="{e(lang)}" lang="{e(lang)}"'
         f'{dir_attr} data-src="{e(ep["src"])}"'
+        + (f' data-cover="{e(ep["cover"])}"' if ep.get("cover") else "") +
         f' data-duration="{ep.get("duration") or 0}" data-title="{e(full_title)}">',
-        f'  <button type="button" class="episode-play" aria-label="Abspielen: {e(full_title)}">',
-        f"    {PLAY.format(s=icon)}",
-        f"    {PAUSE.format(s=icon)}",
-        "  </button>",
+        *play_button(ep, full_title, icon, featured),
         "  <div>",
         f'    <p class="episode-meta" lang="de" dir="ltr">{e(" · ".join(x for x in meta if x))}</p>',
         f'    <h3 class="episode-title">{e(title)}</h3>',
@@ -238,6 +309,7 @@ def sync(offline=False):
     paths], "count": n}."""
     tracked = [DATA, PAGE]
     before = {p: _read(p) for p in tracked}
+    covers = []
     with open(DATA, encoding="utf-8") as fh:
         data = json.load(fh)
     if not (data.get("feed") or "").strip():
@@ -254,12 +326,22 @@ def sync(offline=False):
             raise SyncError(f"Der Podcast-Feed ist kein gültiges RSS ({e}).") from e
         if not fresh:
             raise SyncError("Der Podcast-Feed enthält noch keine Folge mit Audiodatei.")
+        old_covers = {cover_path(ep) for ep in data.get("episodes", [])}
         data["episodes"], added, updated, removed = merge(data.get("episodes", []), fresh, feed_lang)
+        for ep in data["episodes"]:
+            if save_cover(ep):
+                covers.append(cover_path(ep))
+                if ep["title"] not in added and ep["title"] not in updated:
+                    updated.append(ep["title"])
+        for path in old_covers - {cover_path(ep) for ep in data["episodes"]}:
+            if os.path.exists(path):
+                os.remove(path)
+                covers.append(path)
         with open(DATA, "w", encoding="utf-8") as fh:
             json.dump(data, fh, ensure_ascii=False, indent=2)
             fh.write("\n")
     count = render(data)
-    changed = [p for p in tracked if _read(p) != before[p]]
+    changed = [p for p in tracked if _read(p) != before[p]] + covers
     return {"added": added, "updated": updated, "removed": removed, "count": count,
             "files": [os.path.relpath(p, ROOT) for p in changed]}
 
