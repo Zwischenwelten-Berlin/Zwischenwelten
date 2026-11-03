@@ -176,6 +176,13 @@ def test_video_sync_adds_new_upload(vid_site, monkeypatch):
 
 def test_video_sync_records_source_but_keeps_older_hand_edits(vid_site):
     root, feed, watch = vid_site
+    data_path = root / "assets" / "media" / "videos.json"
+    data = json.loads(data_path.read_text())
+    for v in data["videos"]:  # an entry from before "source" existed, edited by hand
+        v.pop("source", None)
+        if v["id"] == "T50Ep0B75wk":
+            v["title"] = "Wer wir sind – und wie wir arbeiten"
+    data_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     watch["T50Ep0B75wk"]["title"] = "Zwischenwelten Medienprojekt"
     r = sync_videos.sync()
     v = _videos(root)["T50Ep0B75wk"]
