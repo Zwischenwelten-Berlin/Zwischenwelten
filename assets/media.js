@@ -7,6 +7,9 @@
  *    Ohne JavaScript führt der Link einfach zu YouTube.
  *  - Sprachfilter: .lang-filter[data-filter-target] wie auf /aktuelles.
  *  - Podcast-Player: ein <audio> für die ganze Seite, Steuerung in #player.
+ *    Die Audiodateien kommen von Spotify (anchor.fm). Ohne Einwilligung
+ *    „Externe Medien“ erscheint in der Folge zuerst ein Hinweis mit
+ *    „Folge abspielen“; das gilt dann für alle Folgen dieser Seite.
  */
 (function () {
   "use strict";
@@ -182,6 +185,45 @@
     if (p && p.catch) p.catch(function () { setPlaying(false); });
   }
 
+  var audioAllowed = false; // one-time "Folge abspielen" for this page view
+  var spotifyLink = document.querySelector('.subscribe-row a[href^="https://open.spotify.com/"]');
+  var showUrl = spotifyLink ? spotifyLink.getAttribute("href") : "";
+
+  function closeConsent() {
+    var open = document.querySelector(".episode-consent");
+    if (open) open.parentNode.removeChild(open);
+  }
+
+  function start(ep) {
+    closeConsent();
+    load(ep);
+    play();
+  }
+
+  function askAudioConsent(ep) {
+    closeConsent();
+    var box = document.createElement("div");
+    box.className = "episode-consent";
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-label", "Externe Audiodatei laden");
+    box.setAttribute("lang", "de");
+    box.dir = "ltr";
+    box.innerHTML =
+      "<p>Diese Folge wird von Spotify gestreamt. Beim Abspielen werden Daten wie deine " +
+      'IP-Adresse an Spotify übertragen. Mehr in der <a href="/datenschutz">Datenschutzerklärung</a>.</p>' +
+      '<div class="actions">' +
+      '<button type="button" class="pill-btn" data-load>Folge abspielen</button>' +
+      (showUrl ? '<a href="' + showUrl + '" target="_blank" rel="noopener">Auf Spotify anhören ↗</a>' : "") +
+      "</div>";
+    ep.appendChild(box);
+    var loadBtn = box.querySelector("[data-load]");
+    loadBtn.addEventListener("click", function () {
+      audioAllowed = true;
+      start(ep);
+    });
+    loadBtn.focus();
+  }
+
   document.addEventListener("click", function (e) {
     var btn = e.target.closest && e.target.closest(".episode-play");
     if (!btn) return;
@@ -190,8 +232,8 @@
       if (audio.paused) play(); else audio.pause();
       return;
     }
-    load(ep);
-    play();
+    if (audioAllowed || hasMediaConsent()) start(ep);
+    else askAudioConsent(ep);
   });
 
   toggle.addEventListener("click", function () {

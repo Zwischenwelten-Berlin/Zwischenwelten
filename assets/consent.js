@@ -16,7 +16,7 @@
 (function () {
   "use strict";
 
-  var CONSENT_VERSION = 2; // 2: Google Tag Manager / Analytics in „Statistik“
+  var CONSENT_VERSION = 3; // 2: Google Tag Manager / Analytics in „Statistik“; 3: Spotify in „Externe Medien“
   var STORAGE_KEY = "zw-consent";
   var MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 12 Monate
 
@@ -31,7 +31,7 @@
       id: "media",
       label: "Externe Medien",
       locked: false,
-      desc: "Inhalte von Videoplattformen (z. B. YouTube) werden erst nach Ihrer Einwilligung geladen. Dabei können personenbezogene Daten (z. B. Ihre IP-Adresse) an die Anbieter übertragen werden."
+      desc: "Videos (YouTube) und Podcast-Folgen (Spotify) werden erst nach Ihrer Einwilligung geladen. Dabei können personenbezogene Daten (z. B. Ihre IP-Adresse) an die Anbieter übertragen werden."
     },
     {
       id: "statistics",

@@ -80,7 +80,7 @@ def test_podcast_sync_replaces_placeholders(pod_site):
     assert 'data-lang="ar" lang="ar" dir="rtl"' in page
     assert 'href="https://open.spotify.com/show/x"' in page
     assert 'aria-disabled' not in page
-    assert '<meta name="robots" content="noindex,nofollow">' in page
+    assert '<meta name="robots" content="index,follow">' in page
 
 
 def test_podcast_resync_keeps_editorial_fields(pod_site):
