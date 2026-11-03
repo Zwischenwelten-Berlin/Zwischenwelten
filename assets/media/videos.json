@@ -4,6 +4,34 @@
   "featured": "T50Ep0B75wk",
   "videos": [
     {
+      "id": "PVPpA0nv8h4",
+      "kind": "video",
+      "title": "Berlins Vielfalt erzählen: Stimmen aus dem ZWISCHENWELTEN-Journalistennetzwerk",
+      "date": "2026-11-03",
+      "duration": 360,
+      "lang": "de",
+      "kicker": "Video",
+      "description": "Wer erzählt Berlin – und welche Perspektiven fehlen in den Medien?",
+      "source": {
+        "title": "Berlins Vielfalt erzählen: Stimmen aus dem ZWISCHENWELTEN-Journalistennetzwerk",
+        "description": "Wer erzählt Berlin – und welche Perspektiven fehlen in den Medien?"
+      }
+    },
+    {
+      "id": "-zYgB4IjZII",
+      "kind": "video",
+      "title": "Bürgerjournalismus: Der Kiez erzählt selbst | Dominique Hensel | ZWISCHENWELTEN",
+      "date": "2026-11-03",
+      "duration": 2233,
+      "lang": "de",
+      "kicker": "Video",
+      "description": "Wie werden aus Geschichten aus der Nachbarschaft journalistische Beiträge? Und wie können Menschen ohne Schreiberfahrung ihre Themen öffentlich machen?",
+      "source": {
+        "title": "Bürgerjournalismus: Der Kiez erzählt selbst | Dominique Hensel | ZWISCHENWELTEN",
+        "description": "Wie werden aus Geschichten aus der Nachbarschaft journalistische Beiträge? Und wie können Menschen ohne Schreiberfahrung ihre Themen öffentlich machen?"
+      }
+    },
+    {
       "id": "GNMWiR6fZes",
       "kind": "short",
       "title": "Mehr darüber in unserer Website!",
