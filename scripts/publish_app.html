@@ -2115,11 +2115,14 @@ function renderMediaResult(card, r) {
   box.className = "banner " + (r.ok ? "banner-success" : "banner-error");
   box.textContent = "";
   if (r.ok) {
-    const added = r.added || [];
+    const added = r.added || [], updated = r.updated || [], removed = r.removed || [];
+    const list = (items, one, many) => (items.length === 1 ? one : `${items.length} ${many}`) + items.join(", ") + ". ";
     if (r.retried) {
       box.textContent = "Jetzt hochgeladen. ";
-    } else if (added.length) {
-      box.textContent = (added.length === 1 ? "Neu: " : `${added.length} neu: `) + added.join(", ") + ". ";
+    } else if (added.length || updated.length || removed.length) {
+      box.textContent = (added.length ? list(added, "Neu: ", "neu: ") : "")
+        + (updated.length ? list(updated, "Geändert: ", "geändert: ") : "")
+        + (removed.length ? list(removed, "Entfernt: ", "entfernt: ") : "");
     } else if (r.commit) {
       box.textContent = "Keine neuen Inhalte, die Seite wurde aber aktualisiert. ";
     } else {

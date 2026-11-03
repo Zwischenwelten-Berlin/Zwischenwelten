@@ -814,15 +814,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             "git_output": "\n\n".join(log)})
             return
 
-        result = {"ok": True, "added": r["added"], "count": r["count"], "url": url,
+        result = {"ok": True, "added": r["added"], "updated": r.get("updated", []),
+                  "removed": r.get("removed", []), "count": r["count"], "url": url,
                   "app_updated": APP_UPDATE["pending"]}
         if not r["files"]:
             self.send_json({**result, "commit": "", "git_output": "\n\n".join(log)})
             return
 
         msg = f"content: sync {kind}"
-        if r["added"]:
-            msg += " (+ " + ", ".join(r["added"]) + ")"
+        parts = [f"+ {', '.join(r['added'])}" if r["added"] else "",
+                 f"~ {len(r.get('updated', []))} geändert" if r.get("updated") else "",
+                 f"- {', '.join(r['removed'])}" if r.get("removed") else ""]
+        if any(parts):
+            msg += " (" + "; ".join(p for p in parts if p) + ")"
         stage = _add_commit_push(r["files"], msg, log)
         if stage in ("add", "commit"):
             self.send_json({"ok": False, "stage": stage,

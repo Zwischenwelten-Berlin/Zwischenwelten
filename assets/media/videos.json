@@ -11,7 +11,11 @@
       "duration": 38,
       "lang": "de",
       "kicker": "Short",
-      "description": ""
+      "description": "",
+      "source": {
+        "title": "Mehr darüber in unserer Website!",
+        "description": ""
+      }
     },
     {
       "id": "DZj5hnntHNk",
@@ -21,7 +25,11 @@
       "duration": 37,
       "lang": "de",
       "kicker": "Short",
-      "description": ""
+      "description": "",
+      "source": {
+        "title": "Schickt uns gerne eure Beiträge!🫣",
+        "description": ""
+      }
     },
     {
       "id": "9NjMJKKekcg",
@@ -31,7 +39,11 @@
       "duration": 51,
       "lang": "de",
       "kicker": "Medienpreis",
-      "description": "Der Zwischenwelten Medienpreis 2026 in einer Minute: worum es geht und wie du mitmachen kannst."
+      "description": "Der Zwischenwelten Medienpreis 2026 in einer Minute: worum es geht und wie du mitmachen kannst.",
+      "source": {
+        "title": "Zwischenwelten Berlin - Medienpreis 2026",
+        "description": ""
+      }
     },
     {
       "id": "1fvlYqL5SLA",
@@ -41,7 +53,11 @@
       "duration": 641,
       "lang": "de",
       "kicker": "Projekt",
-      "description": "Berlin ist mehrsprachig und international – doch diese Realität bleibt in den Medien oft unsichtbar oder wird auf Krisen reduziert. Das Projekt Zwischenwelten will das ändern und bringt neue Perspektiven sowie vielfältige Berliner Stimmen in den Journalismus."
+      "description": "Berlin ist mehrsprachig und international – doch diese Realität bleibt in den Medien oft unsichtbar oder wird auf Krisen reduziert. Das Projekt Zwischenwelten will das ändern und bringt neue Perspektiven sowie vielfältige Berliner Stimmen in den Journalismus.",
+      "source": {
+        "title": "Zwischenwelten Medienprojekt",
+        "description": "Berlin ist mehrsprachig und international – doch diese Realität bleibt in den Medien oft unsichtbar oder wird auf Krisen reduziert. Das Projekt Zwischenwelten will das ändern und bringt neue Perspektiven sowie vielfältige Berliner Stimmen in den Journalismus."
+      }
     },
     {
       "id": "yzbi8As-Kh4",
@@ -51,7 +67,11 @@
       "duration": 57,
       "lang": "de",
       "kicker": "Projekt",
-      "description": "Eine Minute ZWISCHENWELTEN: das Projekt im Kurzporträt."
+      "description": "Eine Minute ZWISCHENWELTEN: das Projekt im Kurzporträt.",
+      "source": {
+        "title": "Zwischenwelten Berlin",
+        "description": ""
+      }
     },
     {
       "id": "T50Ep0B75wk",
@@ -61,7 +81,11 @@
       "duration": 325,
       "lang": "de",
       "kicker": "Projektfilm",
-      "description": "Menschen, Geschichten, Perspektiven: Unser Projektfilm gibt einen Einblick in das, was ZWISCHENWELTEN antreibt. Er zeigt das Team, die Partner und vor allem die Bürgerredaktion des Brunnenmagazins – Menschen aus dem Kiez, die ihre eigenen Stimmen in den Journalismus einbringen."
+      "description": "Menschen, Geschichten, Perspektiven: Unser Projektfilm gibt einen Einblick in das, was ZWISCHENWELTEN antreibt. Er zeigt das Team, die Partner und vor allem die Bürgerredaktion des Brunnenmagazins – Menschen aus dem Kiez, die ihre eigenen Stimmen in den Journalismus einbringen.",
+      "source": {
+        "title": "Zwischenwelten Medienprojekt",
+        "description": "Projektüberblick ZWISCHENWELTEN ist ein interkulturelles Kultur-, Medien- und Bildungsprojekt an der Schnittstelle von Journalismus, Zivilgesellschaft und kultureller Bildung. Ziel des Projekts ist es, Perspektiven sichtbar zu machen, die im öffentlichen Diskurs bislang unterrepräsentiert sind, und dialogische, mehrsprachige Medienformate für eine postmigrantische Stadtgesellschaft zu entwickeln."
+      }
     }
   ]
 }

@@ -104,12 +104,15 @@ def parse_feed(xml_bytes):
 
 def merge(existing, fresh, feed_lang):
     """Feed fields from `fresh`, editorial fields from `existing` (by guid).
-    Episodes the feed no longer lists are dropped."""
+    Episodes the feed no longer lists are dropped. Returns (merged, added,
+    updated, removed) with episode titles in the last three."""
     old = {e["guid"]: e for e in existing}
-    merged, added = [], []
+    merged, added, updated = [], [], []
     for ep in fresh:
         prev = old.get(ep["guid"])
         if prev:
+            if any(prev.get(k) != v for k, v in ep.items()):
+                updated.append(ep["title"])
             for key in EDITORIAL:
                 if key in prev:
                     ep[key] = prev[key]
@@ -121,7 +124,9 @@ def merge(existing, fresh, feed_lang):
             ep["guests"] = []
             added.append(ep["title"])
         merged.append(ep)
-    return merged, added
+    still = {ep["guid"] for ep in fresh}
+    removed = [e["title"] for e in existing if e["guid"] not in still]
+    return merged, added, updated, removed
 
 
 # --------------------------------------------------------------------------
@@ -229,7 +234,8 @@ def _read(path):
 
 def sync(offline=False):
     """Read the feed (unless `offline`) and re-render podcasts.html. Returns
-    {"added": [titles], "files": [repo-relative changed paths], "count": n}."""
+    {"added", "updated", "removed": [titles], "files": [repo-relative changed
+    paths], "count": n}."""
     tracked = [DATA, PAGE]
     before = {p: _read(p) for p in tracked}
     with open(DATA, encoding="utf-8") as fh:
@@ -237,7 +243,7 @@ def sync(offline=False):
     if not (data.get("feed") or "").strip():
         raise SyncError("Es ist noch kein Podcast-Feed eingetragen. Die RSS-Adresse des "
                         "Podcast-Hosters gehört in assets/media/podcasts.json unter \"feed\".")
-    added = []
+    added, updated, removed = [], [], []
     if not offline:
         try:
             fresh, feed_lang = parse_feed(fetch_feed(data["feed"]))
@@ -248,13 +254,13 @@ def sync(offline=False):
             raise SyncError(f"Der Podcast-Feed ist kein gültiges RSS ({e}).") from e
         if not fresh:
             raise SyncError("Der Podcast-Feed enthält noch keine Folge mit Audiodatei.")
-        data["episodes"], added = merge(data.get("episodes", []), fresh, feed_lang)
+        data["episodes"], added, updated, removed = merge(data.get("episodes", []), fresh, feed_lang)
         with open(DATA, "w", encoding="utf-8") as fh:
             json.dump(data, fh, ensure_ascii=False, indent=2)
             fh.write("\n")
     count = render(data)
     changed = [p for p in tracked if _read(p) != before[p]]
-    return {"added": added, "count": count,
+    return {"added": added, "updated": updated, "removed": removed, "count": count,
             "files": [os.path.relpath(p, ROOT) for p in changed]}
 
 
@@ -268,6 +274,10 @@ def main(argv=None):
         raise SystemExit(str(e))
     for title in r["added"]:
         print(f"+ neu: {title}")
+    for title in r["updated"]:
+        print(f"~ geändert: {title}")
+    for title in r["removed"]:
+        print(f"- entfernt: {title}")
     print(f"podcasts.html aktualisiert ({r['count']} Folgen, {len(r['files'])} Dateien geändert)")
 
 

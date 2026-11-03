@@ -100,6 +100,22 @@ def test_podcast_resync_keeps_editorial_fields(pod_site):
     assert sync_podcasts.sync()["files"] == []
 
 
+def test_podcast_resync_reports_changed_and_removed_episodes(pod_site):
+    sync_podcasts.sync()
+    feed = pod_site / "feed.xml"
+    xml = feed.read_text(encoding="utf-8")
+    xml = xml.replace("<title>Wem gehört Berlin?</title>", "<title>Wem gehört Berlin? (neu)</title>")
+    start = xml.index("<item>\n    <title>ماذا")
+    xml = xml[:start] + xml[xml.index("</item>", start) + len("</item>"):]
+    feed.write_text(xml, encoding="utf-8")
+    r = sync_podcasts.sync()
+    assert r["added"] == [] and r["updated"] == ["Wem gehört Berlin? (neu)"]
+    assert r["removed"] == ["ماذا بقي من الثالث من أكتوبر؟"]
+    page = (pod_site / "podcasts.html").read_text(encoding="utf-8")
+    assert "Wem gehört Berlin? (neu)" in page and "ep1.mp3" not in page
+    assert sync_podcasts.sync()["updated"] == []
+
+
 def test_podcast_sync_without_feed_refuses(pod_site):
     data_path = pod_site / "assets" / "media" / "podcasts.json"
     data_path.write_text(json.dumps({"feed": "", "links": {}, "episodes": []}), encoding="utf-8")
@@ -125,7 +141,16 @@ def vid_site(tmp_path, monkeypatch):
     feed = [{"id": v["id"], "title": v["title"], "date": v["date"], "description": ""} for v in known]
     monkeypatch.setattr(sync_videos, "feed_entries", lambda channel_id: feed)
     monkeypatch.setattr(sync_videos, "save_thumb", lambda v: False)
-    return tmp_path, feed
+    # What YouTube currently says per id; unknown ids answer like a bot check.
+    watch = {v["id"]: {"status": "ok", "duration": v["duration"], "date": v["date"],
+                       "title": v["title"], "description": v["description"]} for v in known}
+    monkeypatch.setattr(sync_videos, "watch_info", lambda vid: dict(watch.get(vid) or {
+        "status": "unknown", "duration": 0, "date": "", "title": vid, "description": ""}))
+    return tmp_path, feed, watch
+
+
+def _videos(root):
+    return {v["id"]: v for v in json.loads((root / "assets" / "media" / "videos.json").read_text())["videos"]}
 
 
 def test_video_sync_without_new_uploads_changes_nothing(vid_site):
@@ -134,11 +159,11 @@ def test_video_sync_without_new_uploads_changes_nothing(vid_site):
 
 
 def test_video_sync_adds_new_upload(vid_site, monkeypatch):
-    root, feed = vid_site
+    root, feed, watch = vid_site
     feed.insert(0, {"id": "NEWVIDEO123", "title": "Neues Video #berlin #medien",
                     "date": "2026-10-27", "description": "Erster Absatz.\n\nwww.zwischenwelten-berlin.de"})
-    monkeypatch.setattr(sync_videos, "watch_info", lambda vid: {"duration": 125, "date": "2026-10-27",
-                                                                "title": "", "description": ""})
+    watch["NEWVIDEO123"] = {"status": "ok", "duration": 125, "date": "2026-10-27",
+                            "title": "", "description": ""}
     monkeypatch.setattr(sync_videos, "is_short", lambda vid: False)
     r = sync_videos.sync()
     assert r["added"] == ["Neues Video"]
@@ -146,6 +171,90 @@ def test_video_sync_adds_new_upload(vid_site, monkeypatch):
     page = (root / "videos.html").read_text(encoding="utf-8")
     assert 'data-yt="NEWVIDEO123"' in page and "Erster Absatz." in page
     assert '<span class="video-duration">2:05</span>' in page
+    assert _videos(root)["NEWVIDEO123"]["source"] == {"title": "Neues Video", "description": "Erster Absatz."}
+
+
+def test_video_sync_records_source_but_keeps_older_hand_edits(vid_site):
+    root, feed, watch = vid_site
+    watch["T50Ep0B75wk"]["title"] = "Zwischenwelten Medienprojekt"
+    r = sync_videos.sync()
+    v = _videos(root)["T50Ep0B75wk"]
+    assert v["title"] == "Wer wir sind – und wie wir arbeiten"
+    assert v["source"]["title"] == "Zwischenwelten Medienprojekt"
+    assert r["updated"] == [] and r["removed"] == []
+
+
+def test_video_sync_follows_youtube_edits_unless_edited_by_hand(vid_site):
+    root, feed, watch = vid_site
+    sync_videos.sync()  # record "source" for every video
+    data_path = root / "assets" / "media" / "videos.json"
+    data = json.loads(data_path.read_text())
+    for v in data["videos"]:
+        if v["id"] == "1fvlYqL5SLA":
+            v["title"] = "Von Hand geändert"
+    data_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    watch["9NjMJKKekcg"].update(title="Medienpreis 2026 – neu #berlin", duration=75,
+                                description="Neue Beschreibung.\n\nhttps://example.org")
+    watch["1fvlYqL5SLA"]["title"] = "YouTube-Titel neu"
+    r = sync_videos.sync()
+    videos = _videos(root)
+    assert videos["9NjMJKKekcg"]["title"] == "Medienpreis 2026 – neu"
+    assert videos["9NjMJKKekcg"]["description"] == "Neue Beschreibung."
+    assert videos["9NjMJKKekcg"]["duration"] == 75
+    assert videos["9NjMJKKekcg"]["kicker"] == "Medienpreis"
+    assert videos["1fvlYqL5SLA"]["title"] == "Von Hand geändert"
+    assert videos["1fvlYqL5SLA"]["source"]["title"] == "YouTube-Titel neu"
+    assert r["updated"] == ["Medienpreis 2026 – neu"]
+    page = (root / "videos.html").read_text(encoding="utf-8")
+    assert "Medienpreis 2026 – neu" in page and "Neue Beschreibung." in page
+
+
+def test_video_sync_hides_deleted_video_and_brings_it_back(vid_site):
+    root, feed, watch = vid_site
+    sync_videos.sync()
+    watch["yzbi8As-Kh4"]["status"] = "gone"
+    r = sync_videos.sync()
+    assert r["removed"] == ["Zwischenwelten Berlin"]
+    assert _videos(root)["yzbi8As-Kh4"]["gone"] is True
+    assert 'data-yt="yzbi8As-Kh4"' not in (root / "videos.html").read_text(encoding="utf-8")
+    assert sync_videos.sync()["files"] == []  # stays gone quietly
+    watch["yzbi8As-Kh4"]["status"] = "ok"
+    r = sync_videos.sync()
+    assert r["updated"] == ["Zwischenwelten Berlin"] and "gone" not in _videos(root)["yzbi8As-Kh4"]
+    assert 'data-yt="yzbi8As-Kh4"' in (root / "videos.html").read_text(encoding="utf-8")
+
+
+def test_video_sync_ignores_pages_it_does_not_understand(vid_site):
+    root, feed, watch = vid_site
+    sync_videos.sync()
+    watch.clear()  # every watch page now looks like a bot check
+    assert sync_videos.sync()["files"] == []
+
+
+def test_parse_watch_page():
+    ok = ('<meta name="title" content="Titel &amp; mehr">"playabilityStatus":{"status":"OK"}'
+          '"lengthSeconds":"61""shortDescription":"Zeile 1\\nZeile \\"2\\""')
+    info = sync_videos.parse_watch_page(ok)
+    assert info["status"] == "ok" and info["title"] == "Titel & mehr" and info["duration"] == 61
+    assert info["description"] == 'Zeile 1\nZeile "2"'
+    gone = '<meta name="title" content="">"playabilityStatus":{"status":"ERROR","reason":"Dieses Video ist nicht verfügbar"}'
+    assert sync_videos.parse_watch_page(gone)["status"] == "gone"
+    private = '"playabilityStatus":{"status":"LOGIN_REQUIRED","reason":"Dieses Video ist privat"}'
+    assert sync_videos.parse_watch_page(private)["status"] == "gone"
+    assert sync_videos.parse_watch_page("<html>Bevor Sie zu YouTube weitergehen</html>")["status"] == "unknown"
+
+
+def test_save_thumb_replaces_only_changed_images(tmp_path, monkeypatch):
+    monkeypatch.setattr(sync_videos, "THUMBS", str(tmp_path))
+    monkeypatch.setattr(sync_videos, "_shrink", lambda data, width: data)
+    image = {"bytes": b"one"}
+    monkeypatch.setattr(sync_videos, "_get", lambda url, raw=False: image["bytes"])
+    video = {"id": "abc", "kind": "video"}
+    assert sync_videos.save_thumb(video) is True
+    assert sync_videos.save_thumb(video) is False
+    image["bytes"] = b"two"
+    assert sync_videos.save_thumb(video) is True
+    assert (tmp_path / "abc.jpg").read_bytes() == b"two"
 
 
 # ---- Publish-App endpoints -------------------------------------------------

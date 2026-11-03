@@ -6,10 +6,22 @@
 
 assets/media/videos.json is the source of truth. New uploads from the
 channel's public RSS feed (no API key) are appended there with a cleaned-up
-title; kicker, description and language stay editable by hand and are never
-overwritten. Thumbnails are saved to assets/videos/ so the page shows them
-without contacting YouTube before consent. videos.html is rewritten only
-between its <!-- VIDEOS:… --> markers.
+title. Every sync also re-reads each known video's YouTube page:
+
+  - duration follows YouTube;
+  - title and description follow YouTube unless they were edited by hand.
+    "source" remembers what YouTube said last time; a field that still
+    equals it takes the new text, a field that differs is a hand edit and
+    stays. Entries without "source" (older ones) are treated as hand-edited
+    once and only get their "source" recorded;
+  - deleted or private videos get "gone": true and leave the page; they
+    come back with all hand edits if the video becomes public again;
+  - kicker, language, "hidden" and "featured" are never touched.
+
+Thumbnails are saved to assets/videos/ so the page shows them without
+contacting YouTube before consent; a thumbnail changed on YouTube replaces
+the saved one. videos.html is rewritten only between its <!-- VIDEOS:… -->
+markers.
 """
 import argparse
 import html
@@ -60,16 +72,38 @@ def is_short(vid):
 
 
 def watch_info(vid):
-    page = _get(f"https://www.youtube.com/watch?v={vid}")
+    """What the watch page says about `vid`. "status" is "ok", "gone"
+    (deleted or private) or "unknown" (page not understood, e.g. a bot
+    check) — "unknown" must never change anything."""
+    return parse_watch_page(_get(f"https://www.youtube.com/watch?v={vid}"), vid)
+
+
+def parse_watch_page(page, vid=""):
+    playability = re.search(r'"playabilityStatus":\{"status":"([A-Z_]+)"(?:,"reason":"((?:[^"\\]|\\.)*)")?', page)
+    status = "unknown"
+    if playability:
+        code, reason = playability.group(1), (playability.group(2) or "").lower()
+        if code in ("OK", "UNPLAYABLE") or (code == "LOGIN_REQUIRED" and "privat" not in reason):
+            status = "ok"  # UNPLAYABLE/age gate: still public, just not embeddable here
+        elif code == "ERROR" or "privat" in reason:
+            status = "gone"
     length = re.search(r'"lengthSeconds":"(\d+)"', page)
     date = re.search(r'"uploadDate":"(\d{4}-\d\d-\d\d)', page)
     title = re.search(r'<meta name="title" content="([^"]*)"', page)
-    desc = re.search(r'<meta name="description" content="([^"]*)"', page)
+    desc = re.search(r'"shortDescription":("(?:[^"\\]|\\.)*")', page)
+    if desc:
+        description = json.loads(desc.group(1))
+    else:
+        meta = re.search(r'<meta name="description" content="([^"]*)"', page)
+        description = html.unescape(meta.group(1)) if meta else ""
+    if status == "ok" and not (title and title.group(1)):
+        status = "unknown"
     return {
+        "status": status,
         "duration": int(length.group(1)) if length else 0,
         "date": date.group(1) if date else "",
-        "title": html.unescape(title.group(1)) if title else vid,
-        "description": html.unescape(desc.group(1)) if desc else "",
+        "title": html.unescape(title.group(1)) if title and title.group(1) else vid,
+        "description": description,
     }
 
 
@@ -108,23 +142,58 @@ def clean_description(text):
     return " ".join(lines)
 
 
+def youtube_text(kind, title, description):
+    """Title and description as the page would show them, from YouTube's raw text."""
+    return {"title": clean_title(title),
+            "description": "" if kind == "short" else clean_description(description)}
+
+
 def new_entry(vid, title, date, description, kind, duration):
+    text = youtube_text(kind, title, description)
     return {
         "id": vid,
         "kind": kind,
-        "title": clean_title(title),
+        "title": text["title"],
         "date": date,
         "duration": duration,
         "lang": "de",
         "kicker": "Short" if kind == "short" else "Video",
-        "description": "" if kind == "short" else clean_description(description),
+        "description": text["description"],
+        "source": dict(text),
     }
 
 
+def refresh(video, info):
+    """Apply a known video's current YouTube state (see module docstring).
+    Returns "updated", "gone", "back" or "" for what visibly changed."""
+    if info["status"] == "unknown":
+        return ""
+    if info["status"] == "gone":
+        if video.get("gone"):
+            return ""
+        video["gone"] = True
+        return "gone"
+    change = ""
+    if video.pop("gone", None):
+        change = "back"
+    if info["duration"] and info["duration"] != video.get("duration"):
+        video["duration"] = info["duration"]
+        change = change or "updated"
+    fresh = youtube_text(video["kind"], info["title"], info["description"])
+    source = video.get("source")
+    if source is not None:
+        for key, text in fresh.items():
+            if text and video.get(key) == source.get(key) and text != video.get(key):
+                video[key] = text
+                change = change or "updated"
+    video["source"] = fresh
+    return change
+
+
 def save_thumb(video):
+    """Download the thumbnail and save it if it is new or changed on YouTube.
+    Returns True when assets/videos/<id>.jpg was written."""
     path = os.path.join(THUMBS, f"{video['id']}.jpg")
-    if os.path.exists(path):
-        return False
     names = (["oar2.jpg", "hqdefault.jpg"] if video["kind"] == "short"
              else ["maxresdefault.jpg", "sddefault.jpg", "hqdefault.jpg"])
     for name in names:
@@ -136,19 +205,22 @@ def save_thumb(video):
     else:
         print(f"  ! kein Vorschaubild für {video['id']}", file=sys.stderr)
         return False
+    data = _shrink(data, THUMB_W[video["kind"]])
+    if _read(path) == data:
+        return False
     os.makedirs(THUMBS, exist_ok=True)
     with open(path, "wb") as fh:
         fh.write(data)
-    _shrink(path, THUMB_W[video["kind"]])
     return True
 
 
-def _shrink(path, width):
+def _shrink(data, width):
     try:
         from PIL import Image
     except ImportError:
-        return  # keep YouTube's original size; fine, just heavier
-    with Image.open(path) as im:
+        return data  # keep YouTube's original size; fine, just heavier
+    import io
+    with Image.open(io.BytesIO(data)) as im:
         im = im.convert("RGB")
         # YouTube bakes black letter-/pillarbox bars into some thumbnails.
         box = im.convert("L").point(lambda p: 255 if p > 24 else 0).getbbox()
@@ -156,7 +228,9 @@ def _shrink(path, width):
             im = im.crop(box)
         if im.width > width:
             im = im.resize((width, round(im.height * width / im.width)), Image.LANCZOS)
-        im.save(path, "JPEG", quality=82, optimize=True, progressive=True)
+        out = io.BytesIO()
+        im.save(out, "JPEG", quality=82, optimize=True, progressive=True)
+        return out.getvalue()
 
 
 # --------------------------------------------------------------------------
@@ -247,7 +321,7 @@ def _indent(lines, n):
 
 
 def render(data):
-    visible = sorted((v for v in data["videos"] if not v.get("hidden")),
+    visible = sorted((v for v in data["videos"] if not v.get("hidden") and not v.get("gone")),
                      key=lambda v: (v["date"], v["id"]), reverse=True)
     featured = next((v for v in visible if v["id"] == data.get("featured")), None)
     if featured is None:
@@ -295,18 +369,25 @@ def _read(path):
 
 
 def sync(offline=False, add=()):
-    """Fetch new uploads (unless `offline`), save thumbnails, re-render
-    videos.html. Returns {"added": [titles], "files": [repo-relative paths
-    that changed], "count": visible videos}."""
+    """Fetch new uploads and refresh known videos (unless `offline`), save
+    thumbnails, re-render videos.html. Returns {"added", "updated",
+    "removed": [titles], "files": [repo-relative paths that changed],
+    "count": visible videos}."""
     tracked = [DATA, PAGE]
     before = {p: _read(p) for p in tracked}
     with open(DATA, encoding="utf-8") as fh:
         data = json.load(fh)
     known = {v["id"] for v in data["videos"]}
-    added, thumbs = [], []
+    added, updated, removed, thumbs = [], [], [], []
 
     if not offline:
         try:
+            for v in data["videos"]:
+                change = refresh(v, watch_info(v["id"]))
+                if change == "gone":
+                    removed.append(v["title"])
+                elif change:
+                    updated.append(v["title"])
             candidates = [(e["id"], e) for e in feed_entries(data["channel_id"])]
             candidates += [(vid, None) for vid in add]
             for vid, entry in candidates:
@@ -321,6 +402,8 @@ def sync(offline=False, add=()):
                 known.add(vid)
                 added.append(video["title"])
             for v in data["videos"]:
+                if v.get("gone"):
+                    continue
                 if save_thumb(v):
                     thumbs.append(os.path.join(THUMBS, f"{v['id']}.jpg"))
         except (urllib.error.URLError, OSError, ET.ParseError) as e:
@@ -336,7 +419,11 @@ def sync(offline=False, add=()):
     except SystemExit as e:
         raise SyncError(str(e)) from e
     changed = [p for p in tracked if _read(p) != before[p]] + thumbs
-    return {"added": added, "count": count,
+    for v in data["videos"]:  # a new thumbnail alone also counts as a change
+        if (os.path.join(THUMBS, f"{v['id']}.jpg") in thumbs
+                and v["title"] not in added and v["title"] not in updated):
+            updated.append(v["title"])
+    return {"added": added, "updated": updated, "removed": removed, "count": count,
             "files": [os.path.relpath(p, ROOT) for p in changed]}
 
 
@@ -351,6 +438,10 @@ def main(argv=None):
         raise SystemExit(str(e))
     for title in r["added"]:
         print(f"+ neu: {title}")
+    for title in r["updated"]:
+        print(f"~ geändert: {title}")
+    for title in r["removed"]:
+        print(f"- entfernt: {title}")
     print(f"videos.html aktualisiert ({r['count']} Videos, {len(r['files'])} Dateien geändert)")
 
 
