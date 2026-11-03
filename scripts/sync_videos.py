@@ -9,11 +9,13 @@ channel's public RSS feed (no API key) are appended there with a cleaned-up
 title. Every sync also re-reads each known video's YouTube page:
 
   - duration follows YouTube;
-  - title and description follow YouTube unless they were edited by hand.
-    "source" remembers what YouTube said last time; a field that still
-    equals it takes the new text, a field that differs is a hand edit and
-    stays. Entries without "source" (older ones) are treated as hand-edited
-    once and only get their "source" recorded;
+  - "source" remembers what YouTube said last time, so the sync can tell
+    when YouTube changed. Entries without "source" (older ones) only get
+    it recorded on their first sync;
+  - a title changed on YouTube always replaces the title here, even one
+    edited by hand;
+  - a description changed on YouTube replaces the description here unless
+    it was edited by hand (differs from "source");
   - deleted or private videos get "gone": true and leave the page; they
     come back with all hand edits if the video becomes public again;
   - kicker, language, "hidden" and "featured" are never touched.
@@ -183,7 +185,9 @@ def refresh(video, info):
     source = video.get("source")
     if source is not None:
         for key, text in fresh.items():
-            if text and video.get(key) == source.get(key) and text != video.get(key):
+            if not text or text == source.get(key) or text == video.get(key):
+                continue  # unchanged on YouTube, or already shown
+            if key == "title" or video.get(key) == source.get(key):
                 video[key] = text
                 change = change or "updated"
     video["source"] = fresh

@@ -184,7 +184,7 @@ def test_video_sync_records_source_but_keeps_older_hand_edits(vid_site):
     assert r["updated"] == [] and r["removed"] == []
 
 
-def test_video_sync_follows_youtube_edits_unless_edited_by_hand(vid_site):
+def test_video_sync_follows_youtube_edits(vid_site):
     root, feed, watch = vid_site
     sync_videos.sync()  # record "source" for every video
     data_path = root / "assets" / "media" / "videos.json"
@@ -192,19 +192,26 @@ def test_video_sync_follows_youtube_edits_unless_edited_by_hand(vid_site):
     for v in data["videos"]:
         if v["id"] == "1fvlYqL5SLA":
             v["title"] = "Von Hand geändert"
+            v["description"] = "Beschreibung von Hand"
+        if v["id"] == "yzbi8As-Kh4":
+            v["title"] = "Titel von Hand"
     data_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     watch["9NjMJKKekcg"].update(title="Medienpreis 2026 – neu #berlin", duration=75,
                                 description="Neue Beschreibung.\n\nhttps://example.org")
-    watch["1fvlYqL5SLA"]["title"] = "YouTube-Titel neu"
+    watch["1fvlYqL5SLA"].update(title="YouTube-Titel neu", description="YouTube-Beschreibung neu")
     r = sync_videos.sync()
     videos = _videos(root)
     assert videos["9NjMJKKekcg"]["title"] == "Medienpreis 2026 – neu"
     assert videos["9NjMJKKekcg"]["description"] == "Neue Beschreibung."
     assert videos["9NjMJKKekcg"]["duration"] == 75
     assert videos["9NjMJKKekcg"]["kicker"] == "Medienpreis"
-    assert videos["1fvlYqL5SLA"]["title"] == "Von Hand geändert"
-    assert videos["1fvlYqL5SLA"]["source"]["title"] == "YouTube-Titel neu"
-    assert r["updated"] == ["Medienpreis 2026 – neu"]
+    # a title changed on YouTube wins over a hand edit; a description does not
+    assert videos["1fvlYqL5SLA"]["title"] == "YouTube-Titel neu"
+    assert videos["1fvlYqL5SLA"]["description"] == "Beschreibung von Hand"
+    assert videos["1fvlYqL5SLA"]["source"]["description"] == "YouTube-Beschreibung neu"
+    # a hand-edited title stays while YouTube's title is unchanged
+    assert videos["yzbi8As-Kh4"]["title"] == "Titel von Hand"
+    assert sorted(r["updated"]) == ["Medienpreis 2026 – neu", "YouTube-Titel neu"]
     page = (root / "videos.html").read_text(encoding="utf-8")
     assert "Medienpreis 2026 – neu" in page and "Neue Beschreibung." in page
 
