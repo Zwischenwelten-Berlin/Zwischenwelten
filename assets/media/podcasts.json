@@ -1,9 +1,54 @@
 {
-  "feed": "",
+  "feed": "https://anchor.fm/s/1198adc74/podcast/rss",
   "links": {
-    "spotify": "",
+    "spotify": "https://open.spotify.com/show/0JimhGl9ILuS8eA0H07IXi",
     "apple": "",
     "youtube": ""
   },
-  "episodes": []
+  "episodes": [
+    {
+      "guid": "abf87557-713e-4e54-96e0-acb78da39ba8",
+      "title": "Sürgünde gazetecilik, Berlin’de yeni bir hayat – İskender Sezek | Bölüm 4",
+      "number": null,
+      "date": "2026-11-02",
+      "duration": 2222,
+      "src": "https://anchor.fm/s/1198adc74/podcast/play/128644026/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-10-2%2Fa68813f7-4574-f2c7-5c06-6a169bcc49f6.mp3",
+      "description": "Sürgünde gazetecilik, Berlin’de yeni bir hayat – İskender Sezek | Bölüm 4",
+      "lang": "tr",
+      "guests": []
+    },
+    {
+      "guid": "9fed3733-f0f8-420f-b8b3-3dbdcd16d301",
+      "title": "Bürgerjournalismus: Der Kiez erzählt selbst – mit Dominique Hensel | Folge 3",
+      "number": null,
+      "date": "2026-11-02",
+      "duration": 2232,
+      "src": "https://anchor.fm/s/1198adc74/podcast/play/128634855/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-10-2%2Ffd5a4cfc-70fb-3100-4b47-b40995f98d4d.mp3",
+      "description": "Was passiert, wenn Menschen aus der Nachbarschaft ihre Geschichten selbst erzählen? Wie entsteht daraus Journalismus – und wie können auch Menschen ohne Schreiberfahrung mitmachen?",
+      "lang": "de",
+      "guests": []
+    },
+    {
+      "guid": "dce3f6db-3868-4c2f-8f45-a569ad39f231",
+      "title": "Wie hörbar ist Berlins Vielfalt in den Medien? | ZWISCHENWELTEN – Folge 2",
+      "number": null,
+      "date": "2026-11-02",
+      "duration": 570,
+      "src": "https://anchor.fm/s/1198adc74/podcast/play/128626729/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-10-2%2Fcfca3cb3-7164-5d92-cee4-472be8627c39.mp3",
+      "description": "Berlin ist geprägt von unterschiedlichen Sprachen, Kulturen und Lebensgeschichten. Doch wie viel davon findet sich in den Medien wieder? Und welchen Raum haben Menschen mit Migrationserfahrung und unterschiedliche Glaubensgemeinschaften, ihre Geschichten selbst zu erzählen?",
+      "lang": "de",
+      "guests": []
+    },
+    {
+      "guid": "6515023c-25bb-4a82-97a7-5606c632751b",
+      "title": "ZWISCHENWELTEN: Die Stimme der Vielfalt – Unser Auftakt | Folge 1",
+      "number": null,
+      "date": "2026-11-02",
+      "duration": 646,
+      "src": "https://anchor.fm/s/1198adc74/podcast/play/128621449/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-10-2%2F5aa54387-ac3e-ad26-84d3-6360189e1561.mp3",
+      "description": "Berlin ist eine Stadt der vielen Sprachen, Kulturen und Lebensgeschichten. Wie lässt sich diese Vielfalt auch in den Medien sichtbar und hörbar machen?",
+      "lang": "de",
+      "guests": []
+    }
+  ]
 }
