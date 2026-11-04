@@ -22,4 +22,4 @@ Hensel stand einer eigenen Website für ZWISCHENWELTEN zunächst skeptisch gegen
 
 ▶️ Im Video erzählen Dominique Hensel und Süleyman Bağ, wie die Bürgerredaktion ihre Themen plant und wie mehrsprachige Beiträge ihren Weg ins Magazin finden.
 
-https://youtu.be/jGBnj_ywZm0
+## [https://youtu.be/jGBnj_ywZm0](https://youtu.be/jGBnj_ywZm0)
