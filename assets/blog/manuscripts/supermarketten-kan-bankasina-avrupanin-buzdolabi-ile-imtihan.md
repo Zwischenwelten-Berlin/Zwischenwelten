@@ -1,0 +1,15 @@
+# Süpermarketten Kan Bankasına: Avrupa’nın Buzdolabı ile İmtihanı
+
+Geçen gün Berlin’de bizim evin köşesindeki bir süpermarkete girdim. Süt ve peynir reyonuna doğru yürüdüm. Reyonun önü kırmızı-beyaz şeritlerle kapatılmış, görevliler harıl harıl raflardaki ürünleri siyah çöp poşetlerine dolduruyor. Yaşlıca bir kadın şaşkınlıkla “Yine mi elektrikler kesildi?” diye sordu. “Keşke sadece elektrik kesintisi olsa” dedim içimden.
+
+Çünkü mesele artık bozulan birkaç ton peynirin ya da etin çok ötesinde. Haberi okuduğumda tüylerim diken diken oldu. Fransa’da E. Leclerc ve Intermarché, Belçika’da Carrefour, İsveç’te ICA derken Avrupa’nın dev süpermarket zincirlerinin soğutma sistemleri uzaktan ele geçirilip sıcaklık 50 dereceye çıkarılmış. Üstelik saldırganların hedefinde sadece marketler yokmuş. Fransa’da aynı sistemleri kullanan üç kan saklama tesisi de bu saldırılardan etkilenmiş; alarmlar son anda devreye girmese binlerce ünite kan bir gecede çöp olacakmış.
+
+İşte o an anlıyorsunuz ki Avrupa’nın kapısındaki tehlike sandığımızdan çok daha büyük ve sinsi. Çünkü marketteki dolabı ısıtan o görünmez el, yarın Berlin’deki, Paris’teki, Stockholm’deki hastanelerin kan bankalarını, milyonlarca hayatı kurtaran aşı merkezlerini de aynı tuşla felç edebilir. Eskiden savaş dediğinde aklımıza tank gelirdi, tüfek gelirdi, sınır boylarında siper kazan askerler gelirdi. Şimdi cephe tam olarak akşam uğradığımız süpermarketin reyonu, acil servisteki kan saklama ünitesi, mahalledeki aşı dolabı olmuş durumda.
+
+Almanya’da ve Avrupa genelinde bugünlerde tek gündem savaşa hazırlık. Gazeteleri açıyorsunuz, her gün milyar euroluk savunma bütçeleri, sığınak envanterleri, zorunlu askerlik tartışmaları, “Doğu’dan bir saldırı gelirse ne yaparız?” senaryoları... Avrupalı liderler kürsülere çıkıp orduları nasıl güçlendireceklerini, sınırları nasıl tahkim edeceklerini anlatıyor.
+
+Fakat kapıdaki düşman artık sınır telini kesip içeri girmiyor ki! Dünyanın öbür ucunda, elinde kahvesiyle Avrupa’nın gıda zincirini ve sağlık sistemini ayakta tutan soğutucuların ayarını “buz çözme” moduna alıyor. Ne füze atmaya gerek var ne de asker göndermeye. Bir kıtanın gıdasını, kanını, aşısını ya da kışın ayazında kalorifer sistemlerini kilitlediğiniz an o toplumu zaten içeriden çökertmişsiniz demektir.
+
+Şimdi Avrupa’nın siber güvenlik merkezleri alarmda. Dünyada internete açık binlerce soğutma kontrol cihazı tek tek taranıyor, “Fişi çekin, ağları kapatın” uyarıları yapılıyor. Ancak sokaktaki insanın içindeki o huzursuzluk büyüyor: “Biz milyarlarca euro harcayıp sınırlarımıza tank yığarken ya düşman çoktan mutfağımızın ve hastanemizin içine sızdıysa?”
+
+Marketten elim boş çıkarken bir kez daha anladım ki bu yeni savaşta cephe artık sınır boyları değil. Mermilerin bakırdan değil kodlardan yapıldığı bu yeni savaş düzeninde cephe artık hayatın tam kalbi. Sanırım Avrupa o görünmez tuşlara basan elleri durduramadığı sürece yerin altına inşa ettiği hiçbir sığınak insanları korumaya yetmeyecek.
