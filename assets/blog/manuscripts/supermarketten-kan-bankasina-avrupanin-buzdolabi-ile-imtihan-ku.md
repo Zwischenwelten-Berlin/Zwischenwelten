@@ -1,0 +1,17 @@
+# Ji supermarketê heta bankên xwînê: Îmtîhana Ewropayê bi sarincê re
+
+Berya çend rojan li Berlînê li quncikê kolana me ketim supermarketeke. Min berê xwe da aliyê beşa şîr û penîrî. Pêşiya beşê bi şeritên sor û spî hatibû girtin. Karmend bi lez û bez tiştên li ser refan diavêtin torbeyên reş ên gelaş. Jineke bi temen, bi şaşî pirsî: “Dîsa elektrîk qut bûye? Min di dilê xwe de got: “Xwezî tenê elektrîk qut bûya”.
+
+Çimkî mesele êdî ji çend ton penîr an goştê xerabûyî gelek wêdetir e. Gava min nûçe xwend, muyê serê min rabû. Li Fransayê E. Leclerc û Intermarché, li Belçîkayê Carrefour, li Swêdê ICA… Êrîşkaran ji dûr ve kontrola pergalên sarkirinê yên van supermarketên Ewropayê girtibûn destê xwe û germahî gihandibûn 50 pileyan. Wisa xuya dikir ku armanca wan ji supermarketan wêdetir e. Li Fransayê, sê navendên depokirina xwînê ku heman pergal bi kar dianîn jî ji van êrîşan bandor bûbûn. Heke alarm di kêliya dawî de lê nedaba, bi hezar unîteyên (kîsikên) xwînê da di şevekê de bibûna gemar.
+
+Di wê kêliyê de mirov fam dike ku xetera li ber deriyê Ewropayê ji ya ku me diguman kir gelek mezintir û veşartîtir e. Ew destên veşartî ku îro sarinca supermarketê germ dike, dikare sibê bi pêlkirina heman bişkojkên klavyê; bankên xwînê yên nexweşxaneyên Berlîn, Parîs û Stockholmê û navendên derzîlêdanê yên ku jiyana bi milyonan kesan rizgar dikin, bêwec bikin. Berê, gava qala şer dibû, tank dihatin bîra me, tifing dihatin bîra me, leşkerên ku li dirêjahiya sînor xendek dikolan dihatin bîra me. Îro eniya şer heya li ber refa supermarketê, li ber sarinca xwînê ya beşa lezgînê, li ber sarinca derziyên parastinê ya li taxa me hatiye.
+
+Ev demek e, li Almanya û li seranserê Ewropayê, tenê mijarek li rojevê ye: amadekariya şer. Em kîjan rojnameyê vekin, her roj heman mijar li ber çavan in: budçeyên parastinê yên bi milyaran euro, avakirina sîstemên penagehan, nîqaşên li ser leşkeriya mecbûrî û senaryoyên bi vê pirsê: “Heke ji Rojhilat ve êrîşek bê, em ê çi bikin?” Rêberên Ewropayê derdikevin ser kürsiyan û dibêjin ka dê çawa artêşên xwe bihêz bikin û sînorên xwe saxlem bikin.
+
+Lê dijminê li ber derî êdî ji bo ku bikeve hundir, neçar nîne ku têla ser sînor bibire! Li aliyê din ê dinyayê, li ser kompîterê dirûne û di destek xwe de fîncana qehwê, bi destê xwe yê din jî, sarincên ku sîstema xwarinê û pergala tenduristiyê ya Ewropayê li ser piyan digirin, têk bibe. Ne hewce ye ku mûşekekê biavêje, ne jî ku leşkerekî bişîne. Çi xwarin, çi xwîn, çi derziyên parastinê yên parzemînekê ji destê wê bistînin, an jî di sermaya zivistanê de pergala germkirinê ji kar bixin, we civaka wê parzemînê ji hundir ve hilweşandiye.
+
+Niha navendên ewlehiya sîber a Ewropayê di halê alarmê de ne. Li seranserê dinyayê, bi hezaran amûrên kontrola sarkirinê yên ku ji înternetê ve gihîştina wan gengaz e, yek bi yek tên kontrolkirin. Hişyariyên “Fîşê ji prizê derxin, internetê bigirin” tên dayîn. Lê bêhn teng bûn a mirovê li kolanê her ku diçe zêdetir dibe. “Dema em bi milyaran euro xerc dikin û tankan li ser sînorên xwe kom dikin, ger dijmin di demek kin de xwe gihande metbex û nexweşxaneyên me, emê çî bikin?”
+
+Gava ez bi destên vala ji supermarketê derketim, careke din min fêm kir ku di vî şerê nû de enî êdî li ser sînoran nîne. Di vê pergala nû ya şer de, ku gule ji kodan tên çêkirin, enî di nava dilê jiyanê de ye. Ez dibêjim heta ku Ewropa nikaribe wan destên ku li wan bişkojkên klavyên veşartî rawestîne, tu penageha ku li binê erdê ava bikin, dê nikaribe mirovan biparêze.
+
+Werger: Arif Aslan
