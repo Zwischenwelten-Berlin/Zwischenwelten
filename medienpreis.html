@@ -13,7 +13,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <!-- End Google Tag Manager -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zwischenwelten Medienpreis 2026 – ZWISCHENWELTEN</title>
-  <meta name="description" content="Zwischenwelten Medienpreis 2026: „Meine Einheit. Deine Einheit. Keine Einheit?“ – Vielfalt, gesellschaftlicher Zusammenhalt und die Rolle der Medien. Einsendeschluss 15. September 2026, Preisverleihung am 11. Dezember 2026 in Berlin.">
+  <meta name="description" content="Zwischenwelten Medienpreis 2026: „Meine Einheit. Deine Einheit. Keine Einheit?“ – Vielfalt, gesellschaftlicher Zusammenhalt und die Rolle der Medien. Einsendeschluss 15. September 2026, Preisverleihung am 11. Dezember 2026, 18 Uhr, im Haus der Demokratie und Menschenrechte, Berlin.">
   <meta name="robots" content="index,follow">
   <meta name="theme-color" content="#123f7a">
   <meta name="color-scheme" content="light">
@@ -81,6 +81,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       font-size:18px;
       margin-bottom:2px;
     }
+    .closed-notice a{
+      color:var(--text);
+      font-weight:700;
+      text-decoration:none;
+      border-bottom:2px solid var(--accent);
+    }
+    .closed-notice a:hover{ border-bottom-color:var(--text); }
     .price-list li{ font-size:16px; }
     .price-list li strong{ color:var(--text); }
     .prose-card.is-dark .price-list li strong{ color:#fff; }
@@ -259,7 +266,290 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       text-transform:uppercase;
     }
 
+    /* Hero: headline left, timeline right */
+    .hero-split{
+      display:grid;
+      grid-template-columns:minmax(0, 1fr) minmax(280px, 380px);
+      gap:clamp(28px, 4vw, 56px);
+      align-items:center;
+    }
+    @media (max-width:900px){
+      .hero-split{ grid-template-columns:1fr; }
+    }
+
+    /* Competition timeline */
+    .mp-timeline{
+      background:#fff;
+      border:1px solid var(--line-strong);
+      border-radius:22px;
+      padding:22px 22px 18px;
+      box-shadow:0 22px 46px -30px rgba(18,63,122,0.45);
+    }
+    .mp-timeline-title{
+      margin:0 0 14px;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      color:var(--text-soft);
+    }
+    .mp-steps{
+      --mp-x:11px;               /* centre of the dots */
+      position:relative;
+      list-style:none;
+      margin:0;
+      padding:0;
+    }
+    /* track + animated fill */
+    .mp-steps::before,
+    .mp-steps::after{
+      content:"";
+      position:absolute;
+      left:calc(var(--mp-x) - 1.5px);
+      top:12px;
+      width:3px;
+      border-radius:3px;
+    }
+    .mp-steps::before{
+      bottom:24px;
+      height:var(--mp-track, auto);
+      background:var(--line-strong);
+    }
+    .mp-steps::after{
+      height:var(--mp-fill, calc((100% - 36px) * var(--mp-progress, 0)));
+      background:var(--accent);
+      transform-origin:top;
+      animation:mp-grow 1.2s cubic-bezier(.2,.7,.2,1) .2s both;
+    }
+    @keyframes mp-grow{ from{ transform:scaleY(0); } to{ transform:scaleY(1); } }
+
+    .mp-step{
+      position:relative;
+      display:flex;
+      gap:14px;
+      padding:6px 0 14px;
+      opacity:0;
+      animation:mp-in .5s ease-out both;
+    }
+    .mp-step:nth-child(1){ animation-delay:.05s; }
+    .mp-step:nth-child(2){ animation-delay:.2s; }
+    .mp-step:nth-child(3){ animation-delay:.35s; }
+    .mp-step:nth-child(4){ animation-delay:.5s; }
+    .mp-step:last-child{ padding-bottom:0; }
+    @keyframes mp-in{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+
+    .mp-dot{
+      position:relative;
+      z-index:1;
+      flex:0 0 auto;
+      width:22px;
+      height:22px;
+      margin-top:1px;
+      border-radius:50%;
+      background:#fff;
+      border:3px solid var(--line-strong);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .mp-body{ min-width:0; }
+    .mp-date{
+      margin:0;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:0.04em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .mp-name{
+      margin:2px 0 0;
+      font-size:15px;
+      font-weight:700;
+      line-height:1.3;
+      color:var(--text-soft);
+    }
+    .mp-note,
+    .mp-countdown{
+      margin:6px 0 0;
+      font-size:13px;
+      line-height:1.45;
+      color:var(--text-soft);
+    }
+    .mp-countdown{ font-weight:700; color:var(--text); }
+    .mp-now{ display:none; }
+
+    /* done */
+    .mp-step.is-done .mp-dot{
+      background:var(--text);
+      border-color:var(--text);
+    }
+    .mp-step.is-done .mp-dot::after{
+      content:"";
+      width:6px;
+      height:10px;
+      margin-top:-2px;
+      border:solid #fff;
+      border-width:0 2px 2px 0;
+      transform:rotate(45deg);
+    }
+    .mp-step.is-done .mp-name{ color:var(--text-soft); }
+
+    /* upcoming */
+    .mp-step:not(.is-done):not(.is-current) .mp-dot{ border-style:dashed; }
+    .mp-step:not(.is-done):not(.is-current) .mp-name{ color:var(--muted); }
+
+    /* current phase: the dominant element */
+    .mp-step.is-current{
+      margin:4px -10px 14px;
+      padding:16px 14px 16px 10px;
+      background:rgba(226,133,30,0.12);
+      border:1px solid rgba(226,133,30,0.45);
+      border-radius:16px;
+    }
+    .mp-step.is-current .mp-dot{
+      margin-left:0;
+      background:var(--accent);
+      border-color:#fff;
+      box-shadow:0 0 0 3px var(--accent);
+    }
+    .mp-step.is-current .mp-dot::before{
+      content:"";
+      position:absolute;
+      inset:-3px;
+      border-radius:50%;
+      border:3px solid var(--accent);
+      animation:mp-pulse 1.8s ease-out infinite;
+    }
+    @keyframes mp-pulse{
+      0%{ transform:scale(1); opacity:.8; }
+      100%{ transform:scale(2.3); opacity:0; }
+    }
+    .mp-step.is-current .mp-date{ color:var(--accent-dark); }
+    .mp-step.is-current .mp-name{
+      font-size:clamp(20px, 2.2vw, 24px);
+      font-weight:800;
+      letter-spacing:-0.02em;
+      color:var(--text);
+      margin-top:4px;
+    }
+    .mp-step.is-current .mp-now{
+      display:inline-block;
+      margin:8px 0 0;
+      padding:3px 10px;
+      border-radius:999px;
+      background:var(--accent);
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:0.06em;
+      text-transform:uppercase;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .mp-steps::after,
+      .mp-step,
+      .mp-step.is-current .mp-dot::before{ animation:none; opacity:1; }
+      .mp-step.is-current .mp-dot::before{ display:none; }
+    }
+
+    /* Preisverleihung: event facts + press kit */
+    .prose .award-time{
+      margin:10px 0 14px;
+      font-size:clamp(16px, 1.8vw, 19px);
+      font-weight:700;
+      color:var(--text);
+    }
+    .event-facts{
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:14px;
+      margin:22px 0 0;
+    }
+    .event-fact{
+      background:#fff;
+      border-radius:16px;
+      padding:18px 20px;
+    }
+    .prose .event-fact-label{
+      margin:0;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      color:var(--text-soft);
+    }
+    .prose .event-fact-value{
+      margin:6px 0 0;
+      font-size:clamp(17px, 1.9vw, 20px);
+      font-weight:800;
+      letter-spacing:-0.02em;
+      line-height:1.25;
+      color:var(--text);
+    }
+    .prose .event-fact-sub{
+      margin:8px 0 0;
+      font-size:14px;
+      line-height:1.55;
+    }
+    .press-kit{
+      margin:22px 0 0;
+      padding:20px 22px;
+      background:rgba(255,255,255,0.55);
+      border:1px solid rgba(255,255,255,0.8);
+      border-radius:16px;
+    }
+    .prose .press-kit h3{ margin-top:0; }
+    .prose .press-kit-label{
+      margin:14px 0 10px;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      color:var(--text-soft);
+    }
+    .prose .press-downloads{
+      list-style:none;
+      margin:0;
+      padding:0;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+    .prose .press-downloads li{ display:block; margin:0; padding:0; }
+    .prose .press-downloads li::before,
+    .prose .press-downloads li::marker{ content:none; display:none; }
+    .prose .press-downloads a{
+      display:inline-flex;
+      align-items:baseline;
+      gap:8px;
+      padding:10px 18px;
+      border-radius:999px;
+      background:var(--text);
+      color:#fff;
+      border:0;
+      font-size:15px;
+      font-weight:700;
+      text-decoration:none;
+      transition:transform .15s ease, background .15s ease;
+    }
+    .prose .press-downloads a:hover{ background:#0d2f5c; transform:translateY(-1px); }
+    .press-downloads small{ font-size:12px; font-weight:600; opacity:.75; }
+    @media (max-width:760px){
+      .event-facts{ grid-template-columns:1fr; }
+    }
+    .mp-press-link{
+      display:inline-block;
+      margin-top:4px;
+      font-size:13px;
+      font-weight:700;
+      color:var(--text);
+      text-decoration:none;
+      border-bottom:2px solid var(--accent);
+    }
+    .mp-press-link:hover{ border-bottom-color:var(--text); }
+
     /* Big award date */
+    .prose .award-date,
     .award-date{
       margin:0;
       font-size:clamp(26px, 4vw, 40px);
@@ -311,12 +601,60 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <div class="container">
           <div class="closed-notice" role="status">
             <span class="closed-notice-icon" aria-hidden="true">🔒</span>
-            <p><strong>Die Einreichungsfrist ist beendet.</strong>Für den Zwischenwelten Medienpreis 2026 werden keine Beiträge mehr angenommen. Einsendeschluss war der 15. September 2026. Vielen Dank für alle Einreichungen! Die Preisverleihung findet am 11. Dezember 2026 in Berlin statt.</p>
+            <p><strong>Die Einreichungsfrist ist beendet.</strong>Für den Zwischenwelten Medienpreis 2026 werden keine Beiträge mehr angenommen. Einsendeschluss war der 15. September 2026. Vielen Dank für alle Einreichungen! Die Preisverleihung findet am 11. Dezember 2026 um 18:00 Uhr im Haus der Demokratie und Menschenrechte in Berlin statt – <a href="#preisverleihung">Anmeldung &amp; Pressemitteilung</a>.</p>
           </div>
-          <p class="medialog-epigraph">Demokratie lebt von Öffentlichkeit. Öffentlichkeit lebt von Vielfalt. Vielfalt braucht Medien.</p>
-          <h1 class="page-title" id="page-title">Zwischenwelten Medienpreis <em>2026</em></h1>
-          <p class="medialog-slogan">„Meine Einheit. Deine Einheit. <em>Keine Einheit?</em>“</p>
-          <p class="page-lead">Vielfalt, gesellschaftlicher Zusammenhalt und die Rolle der Medien</p>
+          <div class="hero-split">
+            <div class="hero-split-main">
+              <p class="medialog-epigraph">Demokratie lebt von Öffentlichkeit. Öffentlichkeit lebt von Vielfalt. Vielfalt braucht Medien.</p>
+              <h1 class="page-title" id="page-title">Zwischenwelten Medienpreis <em>2026</em></h1>
+              <p class="medialog-slogan">„Meine Einheit. Deine Einheit. <em>Keine Einheit?</em>“</p>
+              <p class="page-lead">Vielfalt, gesellschaftlicher Zusammenhalt und die Rolle der Medien</p>
+            </div>
+
+            <!-- TIMELINE: current phase is computed from today's date by the script below;
+                 the static classes are the fallback (state as of the jury phase). -->
+            <aside class="mp-timeline" aria-labelledby="mp-timeline-title">
+              <p class="mp-timeline-title" id="mp-timeline-title">Zeitplan</p>
+              <ol class="mp-steps" style="--mp-progress:.62">
+                <li class="mp-step is-done" data-start="2026-07-01" data-end="2026-09-15">
+                  <span class="mp-dot" aria-hidden="true"></span>
+                  <div class="mp-body">
+                    <p class="mp-date">01. Juli 2026</p>
+                    <p class="mp-name">Ausschreibung &amp; Einreichung</p>
+                    <span class="mp-now">Jetzt</span>
+                  </div>
+                </li>
+                <li class="mp-step is-done" data-start="2026-09-15" data-end="2026-09-16">
+                  <span class="mp-dot" aria-hidden="true"></span>
+                  <div class="mp-body">
+                    <p class="mp-date">15. September 2026</p>
+                    <p class="mp-name">Einsendeschluss</p>
+                    <span class="mp-now">Jetzt</span>
+                  </div>
+                </li>
+                <li class="mp-step is-current" aria-current="step" data-start="2026-09-16" data-end="2026-12-11">
+                  <span class="mp-dot" aria-hidden="true"></span>
+                  <div class="mp-body">
+                    <p class="mp-date">September – Dezember 2026</p>
+                    <p class="mp-name">Jury-Bewertung</p>
+                    <span class="mp-now">Jetzt</span>
+                    <p class="mp-note">Die unabhängige Jury sichtet und bewertet alle eingereichten Beiträge.</p>
+                  </div>
+                </li>
+                <li class="mp-step" data-start="2026-12-11" data-end="2026-12-12">
+                  <span class="mp-dot" aria-hidden="true"></span>
+                  <div class="mp-body">
+                    <p class="mp-date">11. Dezember 2026</p>
+                    <p class="mp-name">Preisverleihung in Berlin</p>
+                    <span class="mp-now">Jetzt</span>
+                    <p class="mp-note">18:00 Uhr · Haus der Demokratie und Menschenrechte</p>
+                    <p class="mp-countdown" hidden></p>
+                    <a class="mp-press-link" href="#presse">Pressemitteilung ↓</a>
+                  </div>
+                </li>
+              </ol>
+            </aside>
+          </div>
         </div>
       </section>
 
@@ -554,7 +892,34 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             <div class="prose">
               <h2 id="preisverleihung">Preisverleihung</h2>
               <p class="award-date"><strong>11. Dezember 2026</strong></p>
-              <p><em>Berlin</em></p>
+              <p class="award-time">Freitag · Beginn 18:00 Uhr · Einlass 17:30 Uhr</p>
+              <p>52 Beiträge wurden eingereicht – die Preisträger:innen werden am Abend der Preisverleihung bekanntgegeben.</p>
+
+              <div class="event-facts">
+                <div class="event-fact">
+                  <p class="event-fact-label">Ort</p>
+                  <p class="event-fact-value">Haus der Demokratie und Menschenrechte</p>
+                  <p class="event-fact-sub">Greifswalder Straße 4, 10405 Berlin<br>
+                    <a href="https://www.openstreetmap.org/search?query=Greifswalder%20Stra%C3%9Fe%204%2C%2010405%20Berlin" target="_blank" rel="noopener">Auf der Karte ansehen ↗</a></p>
+                </div>
+                <div class="event-fact">
+                  <p class="event-fact-label">Anmeldung bis 09.12.2026</p>
+                  <p class="event-fact-value">Teilnahme nur mit Anmeldung</p>
+                  <p class="event-fact-sub">Eintritt frei, um Spenden wird gebeten.<br>
+                    <a href="mailto:medienpreis@zwischenwelten.berlin?subject=Anmeldung%20Preisverleihung%2011.12.2026">medienpreis@zwischenwelten.berlin</a></p>
+                </div>
+              </div>
+
+              <div class="press-kit" id="presse">
+                <h3>Für die Presse</h3>
+                <p>Medienvertreter:innen sind herzlich eingeladen und werden gebeten, sich über den Pressekontakt zu akkreditieren: <a href="mailto:medienpreis@zwischenwelten.berlin?subject=Akkreditierung%20Preisverleihung%2011.12.2026">medienpreis@zwischenwelten.berlin</a>.</p>
+                <p class="press-kit-label">Pressemitteilung vom 16.11.2026 (PDF)</p>
+                <ul class="press-downloads">
+                  <li><a href="assets/presse/medienpreis-2026-pressemitteilung-de.pdf" download hreflang="de" type="application/pdf"><span aria-hidden="true">↓</span> Deutsch <small>PDF · 0,6 MB</small></a></li>
+                  <li><a href="assets/presse/medienpreis-2026-pressemitteilung-en.pdf" download hreflang="en" type="application/pdf" lang="en"><span aria-hidden="true">↓</span> English <small>PDF · 0.6 MB</small></a></li>
+                  <li><a href="assets/presse/medienpreis-2026-pressemitteilung-tr.pdf" download hreflang="tr" type="application/pdf" lang="tr"><span aria-hidden="true">↓</span> Türkçe <small>PDF · 0,5 MB</small></a></li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -609,6 +974,52 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       </div>
     </footer>
   </div>
+  <script>
+    (function(){
+      var list = document.querySelector('.mp-steps');
+      if(!list) return;
+      var steps = Array.prototype.slice.call(list.querySelectorAll('.mp-step'));
+      var d = new Date();
+      var pad = function(n){ return (n < 10 ? '0' : '') + n; };
+      var today = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      var current = null;
+
+      steps.forEach(function(li){
+        var done = today >= li.dataset.end;
+        var isCur = !done && today >= li.dataset.start;
+        li.classList.toggle('is-done', done);
+        li.classList.toggle('is-current', isCur);
+        if(isCur){ li.setAttribute('aria-current', 'step'); current = li; }
+        else li.removeAttribute('aria-current');
+      });
+
+      // Countdown to the award ceremony
+      var last = steps[steps.length - 1];
+      var cd = last.querySelector('.mp-countdown');
+      if(cd && today < last.dataset.start){
+        var p = last.dataset.start.split('-');
+        var t0 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        var days = Math.round((new Date(+p[0], p[1] - 1, +p[2]) - t0) / 864e5);
+        cd.textContent = days === 1 ? 'Noch 1 Tag' : 'Noch ' + days + ' Tage';
+        cd.hidden = false;
+      }
+
+      // Progress fill: down to the current dot (or all the way once finished)
+      function setFill(){
+        var target = current || (today >= last.dataset.end ? last : null);
+        var px = 0;
+        if(target){
+          var dot = target.querySelector('.mp-dot');
+          px = Math.max(0, target.offsetTop + dot.offsetTop + dot.offsetHeight / 2 - 12);
+        }
+        list.style.setProperty('--mp-fill', px + 'px');
+        var ld = last.querySelector('.mp-dot');
+        list.style.setProperty('--mp-track', (last.offsetTop + ld.offsetTop + ld.offsetHeight / 2 - 12) + 'px');
+      }
+      setFill();
+      window.addEventListener('resize', setFill);
+    })();
+  </script>
   <script src="assets/consent.js" defer></script>
   <script src="/assets/nav.js" defer></script>
 </body>
